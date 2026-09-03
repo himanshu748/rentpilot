@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RentPilot
 
-## Getting Started
+RentPilot turns scattered room listings into traceable pursuits. Each pursuit keeps its source evidence, explains its fit score and presents one safe next action from found to viewing.
 
-First, run the development server:
+This repository is the working Convex All Gas Hackathon build.
+
+## What works
+
+- Responsive pursuit cockpit with desktop, tablet and phone compositions
+- Session-persistent search briefs for any city, preferred areas, budget, home types and must-haves without requiring account setup
+- City-scoped pursuit queues and source readiness, with an honest empty state when a city has no approved source yet
+- Convex schema with bounded indexed queries for sources, criteria, listings, threads, activity and validation runs
+- Session-isolated reads and writes: a browser session sees its own pursuits plus the shared demo workspace, never another session's
+- Live Convex demo dataset, labeled as synthetic in the product, with skeleton rows while the first query resolves
+- Explainable ranking with confidence and missing-evidence penalties
+- Human-editable inquiry drafts saved through Convex mutations, locked once an inquiry has been sent
+- AgentMail component, durable send boundary, stable per-draft idempotency key, two-step human confirmation, live delivery status folded back into the pursuit thread and a webhook route
+- Anime.js transitions for pursuit entry and state progress, deferred until the tab is visible and skipped under reduced motion
+- Honest credential gates for Firecrawl discovery and AgentMail delivery
+- Keyboard-complete: skip link, focus-visible rings, Escape and focus return on the mobile evidence dialog
+
+## Local setup
 
 ```bash
+npm install
+CONVEX_AGENT_MODE=anonymous npx convex dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+In another terminal, seed the labeled demo workspace once:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx convex run seed:demo
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open `http://localhost:3000`.
 
-## Learn More
+## Integration configuration
 
-To learn more about Next.js, take a look at the following resources:
+The AgentMail inbox provisioned for this build is `rentpilot-himanshu@agentmail.to`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx convex env set AGENTMAIL_INBOX_ID rentpilot-himanshu@agentmail.to
+npx convex env set AGENTMAIL_API_KEY your_agentmail_key
+npx convex env set AGENTMAIL_WEBHOOK_SECRET your_webhook_secret
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Register the AgentMail webhook at:
 
-## Deploy on Vercel
+```text
+https://your-deployment.convex.site/agentmail/webhook
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Firecrawl is authenticated locally and its key is configured on the anonymous Convex deployment. Its server-side connectivity probe succeeds without an OpenAI key. Ranking remains deterministic and explainable, so this build does not require OpenAI.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The first real source candidate is `bengaluru.rent`. Firecrawl extracted its terms and confirmed that automated extraction requires written permission. No listings or private contact details were imported. RentPilot attempted a permission request from `rentpilot-himanshu@agentmail.to`, but the recipient mail server was unreachable and AgentMail returned a delivery-failure notice. Convex records the failed delivery and keeps the source policy-gated until a valid contact path grants written permission.
+
+Do not scrape a source before its policy status is recorded as approved.
+
+## Verification
+
+```bash
+npx tsc --noEmit
+npm run lint
+npm run build
+```
+
+## Product and visual rationale
+
+See [brand.md](./brand.md) and [design-thesis.md](./design-thesis.md). The generated concept in `design/` is a design reference only. It is not shipped as a production image.

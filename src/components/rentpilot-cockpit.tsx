@@ -186,7 +186,7 @@ function CriteriaDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="criteria-dialog-overlay" />
-        <Dialog.Content className="criteria-dialog-content" aria-describedby="criteria-dialog-description">
+        <Dialog.Content className="criteria-dialog-content" aria-modal="true" aria-describedby="criteria-dialog-description">
           <div className="criteria-dialog-head">
             <div>
               <span className="eyebrow">Personal search profile</span>
@@ -890,6 +890,7 @@ export function RentPilotCockpit() {
               <Dialog.Overlay className="detail-overlay" />
               <Dialog.Content
                 className="detail-dialog"
+                aria-modal="true"
                 aria-describedby={undefined}
                 onCloseAutoFocus={(event) => {
                   const trigger = detailTriggerRef.current;

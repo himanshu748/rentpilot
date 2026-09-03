@@ -60,10 +60,12 @@ Do not scrape a source before its policy status is recorded as approved.
 ## Verification
 
 ```bash
-npx tsc --noEmit
-npm run lint
 npm run build
+npm run lint
+npx tsc --noEmit
 ```
+
+Run `npm run build` first. Next generates the route types that `layout.tsx` depends on into `.next/types`, so on a clean checkout `npx tsc --noEmit` fails until a build or `npm run dev` has created them.
 
 ## Product and visual rationale
 

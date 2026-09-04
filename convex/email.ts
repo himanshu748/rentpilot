@@ -8,7 +8,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { assertListingInSession } from "./session";
+import { assertListingInSession, ownerKey } from "./session";
 import { sendStatus } from "./schema";
 
 const agentmail = new AgentMail(components.agentmail);
@@ -23,7 +23,7 @@ export const sendApprovedDraft = mutation({
   handler: async (ctx, args) => {
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
-    const listing = await assertListingInSession(ctx, thread.listingId, args.sessionId);
+    const listing = await assertListingInSession(ctx, thread.listingId, await ownerKey(ctx, args.sessionId));
 
     if (!process.env.AGENTMAIL_API_KEY) {
       throw new Error("AgentMail is not configured for this deployment.");
@@ -242,7 +242,7 @@ export const syncDeliveryState = mutation({
   handler: async (ctx, args) => {
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
-    const listing = await assertListingInSession(ctx, thread.listingId, args.sessionId);
+    const listing = await assertListingInSession(ctx, thread.listingId, await ownerKey(ctx, args.sessionId));
     if (!thread.agentmailOutboundId) return thread.sendStatus;
 
     const delivery = await agentmail.status(

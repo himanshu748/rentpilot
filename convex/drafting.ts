@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery } from "./_generated/server";
-import { isListingInSession } from "./session";
+import { isListingInSession, ownerKey } from "./session";
 
 /**
  * OpenAI writes the inquiry, never the ranking. Scores stay deterministic in
@@ -34,9 +34,10 @@ export const getDraftContext = internalQuery({
   args: { listingId: v.id("listings"), sessionId: v.optional(v.string()) },
   returns: draftContext,
   handler: async (ctx, args) => {
+    const owner = await ownerKey(ctx, args.sessionId);
     const listing = await ctx.db.get(args.listingId);
     if (!listing) return null;
-    if (!isListingInSession(listing, args.sessionId)) {
+    if (!isListingInSession(listing, owner)) {
       throw new Error("This pursuit belongs to another search session.");
     }
     const thread = await ctx.db
@@ -47,7 +48,7 @@ export const getDraftContext = internalQuery({
 
     const criteria = await ctx.db
       .query("criteria")
-      .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
+      .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner))
       .order("desc")
       .first();
 
@@ -82,7 +83,7 @@ export const saveGeneratedDraft = internalMutation({
     if (!thread) throw new Error("Inquiry thread not found.");
     const listing = await ctx.db.get(thread.listingId);
     if (!listing) throw new Error("Pursuit not found.");
-    if (!isListingInSession(listing, args.sessionId)) {
+    if (!isListingInSession(listing, await ownerKey(ctx, args.sessionId))) {
       throw new Error("This pursuit belongs to another search session.");
     }
     if (thread.sendStatus === "sending" || thread.sendStatus === "sent") {

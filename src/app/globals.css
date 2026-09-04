@@ -77,6 +77,11 @@ main:focus { outline: none; }
 .quiet-icon { width: 27px; height: 27px; border-radius: 7px; }
 .icon-button:hover, .quiet-icon:hover { background: var(--sage-soft); }
 .icon-button:active, .quiet-icon:active { transform: scale(0.96); }
+.save-search-button { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; color: var(--ink); border: 1px solid var(--hairline); background: var(--surface); border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; transition: border-color 150ms ease, background-color 150ms ease; }
+.save-search-button:hover { border-color: #9db6a2; background: var(--sage-soft); }
+.account-chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 6px 0 11px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 9px; }
+.account-email { max-width: 168px; overflow: hidden; color: var(--ink-muted); font: 600 11px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.signin-dialog { width: min(460px, calc(100vw - 32px)); }
 .mobile-menu-button, .mobile-menu { display: none; }
 
 .workspace-grid { display: grid; grid-template-columns: 248px minmax(480px, 1fr) minmax(360px, 410px); max-width: 1600px; min-height: calc(100vh - 64px); margin: 0 auto; border-left: 1px solid var(--hairline); border-right: 1px solid var(--hairline); background: var(--surface); box-shadow: var(--shadow-soft); }
@@ -304,6 +309,8 @@ main:focus { outline: none; }
   .app-shell { padding-bottom: calc(66px + env(safe-area-inset-bottom)); background-size: 24px 24px; }
   .topbar { height: 58px; grid-template-columns: 1fr auto; padding: 0 14px; }
   .desktop-nav, .topbar-actions > .icon-button:not(.mobile-menu-button) { display: none; }
+  .save-search-button { padding-inline: 9px; font-size: 11px; }
+  .account-email { max-width: 92px; }
   :target, #pursuits, #activity, #sources { scroll-margin-top: 70px; }
   .mobile-menu-button { display: grid; }
   .mobile-menu { position: absolute; top: 52px; right: 12px; display: grid; min-width: 150px; padding: 7px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 9px; box-shadow: var(--shadow-soft); }

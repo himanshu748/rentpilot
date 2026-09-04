@@ -2,9 +2,11 @@ import { AgentMail } from "@agentmail/convex";
 import { httpRouter } from "convex/server";
 import { components, internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
+import { auth } from "./auth";
 import { renderIndex, renderListing, sampleListings } from "./sampleSource";
 
 const http = httpRouter();
+auth.addHttpRoutes(http);
 const agentmail = new AgentMail(components.agentmail, {
   onMessageReceived: internal.email.onReplyReceived,
 });

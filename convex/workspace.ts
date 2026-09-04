@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { ownerKey, userKey } from "./session";
 
 const permissionStatus = v.union(
   v.literal("approved"),
@@ -40,10 +42,11 @@ export const getCriteria = query({
   args: { sessionId: v.optional(v.string()) },
   returns: criteriaResult,
   handler: async (ctx, args) => {
-    const sessionCriteria = args.sessionId
+    const owner = await ownerKey(ctx, args.sessionId);
+    const sessionCriteria = owner
       ? await ctx.db
           .query("criteria")
-          .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
+          .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner))
           .order("desc")
           .first()
       : null;
@@ -97,8 +100,9 @@ export const saveCriteria = mutation({
       throw new Error("Maximum budget must be higher than minimum budget.");
     }
 
+    const owner = await ownerKey(ctx, args.sessionId);
     const criteriaId = await ctx.db.insert("criteria", {
-      sessionId: args.sessionId,
+      sessionId: owner,
       city,
       budgetMin: Math.round(args.budgetMin),
       budgetMax: Math.round(args.budgetMax),
@@ -110,7 +114,7 @@ export const saveCriteria = mutation({
       updatedAt: Date.now(),
     });
     await ctx.db.insert("activity", {
-      sessionId: args.sessionId,
+      sessionId: owner,
       listingId: null,
       type: "system",
       message: `Search brief updated for ${city}`,
@@ -136,7 +140,8 @@ export const listActivity = query({
     }),
   ),
   handler: async (ctx, args) => {
-    if (!args.sessionId) {
+    const owner = await ownerKey(ctx, args.sessionId);
+    if (!owner) {
       return await ctx.db
         .query("activity")
         .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", undefined))
@@ -146,7 +151,7 @@ export const listActivity = query({
     const [personal, shared] = await Promise.all([
       ctx.db
         .query("activity")
-        .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", args.sessionId))
+        .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", owner))
         .order("desc")
         .take(12),
       ctx.db
@@ -156,6 +161,77 @@ export const listActivity = query({
         .take(12),
     ]);
     return [...personal, ...shared].sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+  },
+});
+
+/**
+ * Moves everything an anonymous session created onto the signed-in account, so
+ * signing in never costs you the search you already set up. Bounded per table
+ * and safe to call repeatedly: a second run finds nothing left to move.
+ */
+export const claimAnonymousSession = mutation({
+  args: { sessionId: v.string() },
+  returns: v.object({
+    criteria: v.number(),
+    listings: v.number(),
+    activity: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in before claiming a search.");
+    const owner = userKey(userId);
+    if (args.sessionId === owner) {
+      return { criteria: 0, listings: 0, activity: 0 };
+    }
+
+    const [criteria, listings, activity] = await Promise.all([
+      ctx.db
+        .query("criteria")
+        .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
+        .take(50),
+      ctx.db
+        .query("listings")
+        .withIndex("by_session_and_last_seen_at", (q) => q.eq("sessionId", args.sessionId))
+        .take(200),
+      ctx.db
+        .query("activity")
+        .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", args.sessionId))
+        .take(200),
+    ]);
+
+    for (const row of criteria) await ctx.db.patch(row._id, { sessionId: owner });
+    for (const row of listings) await ctx.db.patch(row._id, { sessionId: owner });
+    for (const row of activity) await ctx.db.patch(row._id, { sessionId: owner });
+
+    if (criteria.length + listings.length > 0) {
+      await ctx.db.insert("activity", {
+        sessionId: owner,
+        listingId: null,
+        type: "system",
+        message: `Search saved to your account with ${listings.length} ${listings.length === 1 ? "pursuit" : "pursuits"}`,
+        createdAt: Date.now(),
+        isDemo: false,
+      });
+    }
+    return {
+      criteria: criteria.length,
+      listings: listings.length,
+      activity: activity.length,
+    };
+  },
+});
+
+export const viewer = query({
+  args: {},
+  returns: v.union(
+    v.object({ email: v.union(v.string(), v.null()), name: v.union(v.string(), v.null()) }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const user = await ctx.db.get(userId);
+    return user ? { email: user.email ?? null, name: user.name ?? null } : null;
   },
 });
 

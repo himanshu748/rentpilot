@@ -3,6 +3,7 @@
 import { animate, stagger } from "animejs";
 import type { OutboundId } from "@agentmail/convex";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Activity,
@@ -20,6 +21,7 @@ import {
   Radar,
   Search,
   Send,
+  LogOut,
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
@@ -44,6 +46,7 @@ import {
   type PursuitStatus,
   type SendStatus,
 } from "@/lib/pursuit";
+import { SignInDialog } from "@/components/sign-in-dialog";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 
@@ -616,6 +619,7 @@ export function RentPilotCockpit() {
   const backendSources = useQuery(api.workspace.listSources);
   const backendActivity = useQuery(api.workspace.listActivity, sessionId ? { sessionId } : "skip");
   const integrationStatus = useQuery(api.workspace.integrationStatus);
+  const viewer = useQuery(api.workspace.viewer);
   const saveCriteria = useMutation(api.workspace.saveCriteria);
   const updateDraft = useMutation(api.pursuits.updateDraft);
   const sendApprovedDraft = useMutation(api.email.sendApprovedDraft);
@@ -623,12 +627,15 @@ export function RentPilotCockpit() {
   const writeInquiry = useAction(api.drafting.writeInquiry);
   const sweepSampleSource = useAction(api.discovery.sweepSampleSource);
   const registerSampleSource = useMutation(api.sampleSource.register);
+  const claimAnonymousSession = useMutation(api.workspace.claimAnonymousSession);
+  const { signOut } = useAuthActions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | PursuitStatus>("all");
   const [query, setQuery] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sweeping, setSweeping] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -804,6 +811,20 @@ export function RentPilotCockpit() {
     return await writeInquiry({ listingId: pursuit.listingId, sessionId: sessionId ?? undefined });
   }
 
+  async function claimSessionAfterSignIn() {
+    if (!sessionId) return;
+    try {
+      const moved = await claimAnonymousSession({ sessionId });
+      toast.success(
+        moved.listings > 0
+          ? `Saved. ${moved.listings} ${moved.listings === 1 ? "pursuit" : "pursuits"} now follow your account.`
+          : "Signed in. New pursuits will be saved to your account.",
+      );
+    } catch (error) {
+      toast.error(readableError(error, "Signed in, but this search could not be saved."));
+    }
+  }
+
   async function saveSearchBrief(criteria: SearchCriteria) {
     if (!sessionId) throw new Error("Your search session is still loading. Try again in a moment.");
     await saveCriteria({
@@ -872,6 +893,14 @@ export function RentPilotCockpit() {
         <nav className="desktop-nav" aria-label="Primary"><a className="is-active" href="#pursuits">Pursuits</a><a href="#activity">Activity</a><a href="#sources">Sources</a></nav>
         <div className="topbar-actions">
           <span className="demo-badge"><span aria-hidden="true" />{integrationStatus?.firecrawlConfigured ? "Convex + Firecrawl live" : backendPursuits ? "Convex live" : "Connecting"}</span>
+          {viewer ? (
+            <span className="account-chip">
+              <span className="account-email" title={viewer.email ?? undefined}>{viewer.email ?? "Signed in"}</span>
+              <button className="quiet-icon" type="button" aria-label="Sign out" onClick={() => { void signOut(); }}><LogOut size={14} aria-hidden="true" /></button>
+            </span>
+          ) : (
+            <button className="save-search-button" type="button" onClick={() => setSignInOpen(true)}>Save your search</button>
+          )}
           <button className="icon-button" type="button" aria-label="Edit search preferences" onClick={() => setCriteriaOpen(true)}><Settings2 size={17} aria-hidden="true" /></button>
           <button className="icon-button mobile-menu-button" type="button" aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((value) => !value)}><Menu size={19} aria-hidden="true" /></button>
         </div>
@@ -1017,6 +1046,7 @@ export function RentPilotCockpit() {
         <a href="#activity"><Activity size={18} aria-hidden="true" /><span>Activity</span></a>
         <button type="button" onClick={() => toast.info(integrationStatus?.agentmailConfigured ? `AgentMail is connected as ${integrationStatus.inboxId}.` : "AgentMail inbox is ready and waiting for its deployment key.")}><Mail size={18} aria-hidden="true" /><span>Inbox</span></button>
       </nav>
+      <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} onSignedIn={claimSessionAfterSignIn} />
       <CriteriaDialog key={backendCriteria?._id ?? "default-criteria"} open={criteriaOpen} onOpenChange={setCriteriaOpen} criteria={activeCriteria} onSave={saveSearchBrief} />
     </div>
   );

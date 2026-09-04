@@ -9,6 +9,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { listingUrl, sampleListings, sampleSourceHost } from "./sampleSource";
+import { ownerKey } from "./session";
 
 const firecrawl = new FirecrawlClient(components.firecrawl);
 
@@ -93,17 +94,11 @@ export const persistExtractedListing = internalMutation({
     score: v.number(),
   }),
   handler: async (ctx, args) => {
-    const criteria = args.sessionId
-      ? await ctx.db
-          .query("criteria")
-          .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
-          .order("desc")
-          .first()
-      : await ctx.db
-          .query("criteria")
-          .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", undefined))
-          .order("desc")
-          .first();
+    const criteria = await ctx.db
+      .query("criteria")
+      .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
+      .order("desc")
+      .first();
     if (!criteria) throw new Error("Search criteria must exist before discovery.");
 
     const budgetScore =
@@ -297,7 +292,7 @@ export const scrapeApprovedListing = action({
       canonicalUrl: parsedUrl.toString(),
       contentHash,
       extracted,
-      sessionId: args.sessionId,
+      sessionId: await ownerKey(ctx, args.sessionId),
     });
   },
 });

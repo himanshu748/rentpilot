@@ -6,6 +6,8 @@ This repository is the working Convex All Gas Hackathon build.
 
 ## What works
 
+- Anonymous by default, with optional sign-in: AgentMail emails a six digit code, and signing in claims everything the anonymous session created onto the account
+- Server-derived ownership: a signed-in request ignores any client-supplied session id, so one account cannot read another's pursuits by guessing a key
 - Landing page at `/` that states the product, the six pursuit stages and the recorded source-policy refusal
 - Geist Sans and Geist Mono self-hosted through `next/font`, matching the brand system
 - Responsive pursuit cockpit at `/app` with desktop, tablet and phone compositions
@@ -56,6 +58,9 @@ npx convex env set AGENTMAIL_API_KEY your_agentmail_key
 npx convex env set AGENTMAIL_WEBHOOK_SECRET your_webhook_secret
 ```
 
+AgentMail also carries the sign-in codes, so no separate email provider is needed.
+Until `AGENTMAIL_API_KEY` is set, sign-in reports that it cannot send a code.
+
 Register the AgentMail webhook at:
 
 ```text
@@ -72,9 +77,23 @@ npx convex env set OPENAI_MODEL gpt-4o-mini   # optional, this is the default
 
 Until `OPENAI_API_KEY` is set, the "Write with OpenAI" control stays disabled and says so.
 
-Firecrawl is authenticated locally and its key is configured on the anonymous Convex deployment. Its server-side connectivity probe succeeds without an OpenAI key. Ranking remains deterministic and explainable, so this build does not require OpenAI.
+Firecrawl is authenticated locally and its key is configured on the Convex deployment. Its
+server-side connectivity probe (`npx convex run discovery:probeFirecrawl`) returns a live
+status code and page title.
 
-The first real source candidate is `bengaluru.rent`. Firecrawl extracted its terms and confirmed that automated extraction requires written permission. No listings or private contact details were imported. RentPilot attempted a permission request from `rentpilot-himanshu@agentmail.to`, but the recipient mail server was unreachable and AgentMail returned a delivery-failure notice. Convex records the failed delivery and keeps the source policy-gated until a valid contact path grants written permission.
+## The sample source
+
+Discovery needs a source that permits it. This deployment publishes its own, at
+`/sample-source` on the same `convex.site` host, and grants automated extraction in writing
+on the page. It is a fixture, not a claim that an outside portal gave permission, and every
+page says so. The listings follow whatever city and areas are in your brief, so the sweep
+works for any place you choose.
+
+The sweep runs through the same permission and host checks as any other source, which is why
+it only works against a deployed backend: Firecrawl cannot reach a local Convex backend, and
+`scrapeApprovedListing` refuses anything that is not https.
+
+The first real third-party source candidate is `bengaluru.rent`. Firecrawl extracted its terms and confirmed that automated extraction requires written permission. No listings or private contact details were imported. RentPilot attempted a permission request from `rentpilot-himanshu@agentmail.to`, but the recipient mail server was unreachable and AgentMail returned a delivery-failure notice. Convex records the failed delivery and keeps the source policy-gated until a valid contact path grants written permission.
 
 Do not scrape a source before its policy status is recorded as approved.
 

@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
+    "@auth/core": "^0.41.3",
     "@base-ui/react": "^1.7.0",
+    "@convex-dev/auth": "^0.0.95",
     "@convex-dev/workflow": "^0.4.6",
     "@firecrawl/firecrawl-convex": "^0.1.1",
     "@radix-ui/react-dialog": "^1.1.23",

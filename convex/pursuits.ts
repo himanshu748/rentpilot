@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertListingInSession } from "./session";
+import { assertListingInSession, ownerKey } from "./session";
 import { pursuitStatus, sendStatus } from "./schema";
 
 const scorePart = v.object({
@@ -50,16 +50,17 @@ export const list = query({
   args: { sessionId: v.optional(v.string()) },
   returns: v.array(pursuit),
   handler: async (ctx, args) => {
+    const owner = await ownerKey(ctx, args.sessionId);
     let listings = await ctx.db
       .query("listings")
-      .withIndex("by_session_and_last_seen_at", (q) => q.eq("sessionId", args.sessionId))
+      .withIndex("by_session_and_last_seen_at", (q) => q.eq("sessionId", owner))
       .order("desc")
       .take(50);
 
-    if (args.sessionId && listings.length === 0) {
+    if (owner && listings.length === 0) {
       const criteria = await ctx.db
         .query("criteria")
-        .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
+        .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner))
         .order("desc")
         .first();
       if (!criteria || (criteria.city ?? "Bengaluru").toLowerCase() === "bengaluru") {
@@ -109,7 +110,7 @@ export const updateDraft = mutation({
   handler: async (ctx, args) => {
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
-    await assertListingInSession(ctx, thread.listingId, args.sessionId);
+    await assertListingInSession(ctx, thread.listingId, await ownerKey(ctx, args.sessionId));
     if (thread.sendStatus === "sending" || thread.sendStatus === "sent") {
       throw new Error("This inquiry has already been sent and can no longer be edited.");
     }
@@ -136,7 +137,7 @@ export const transition = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const listing = await assertListingInSession(ctx, args.listingId, args.sessionId);
+    const listing = await assertListingInSession(ctx, args.listingId, await ownerKey(ctx, args.sessionId));
     await ctx.db.patch(args.listingId, { status: args.status });
     await ctx.db.insert("activity", {
       sessionId: listing.sessionId,

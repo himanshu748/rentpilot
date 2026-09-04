@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -20,6 +21,8 @@ export const sendStatus = v.union(
 );
 
 export default defineSchema({
+  ...authTables,
+
   sources: defineTable({
     domain: v.string(),
     name: v.string(),

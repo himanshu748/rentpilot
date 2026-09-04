@@ -40,6 +40,7 @@ const pursuit = v.object({
       _id: v.id("threads"),
       draftSubject: v.string(),
       draftBody: v.string(),
+      draftedByModel: v.union(v.string(), v.null()),
       sendStatus,
       agentmailOutboundId: v.union(v.string(), v.null()),
       lastReplySummary: v.union(v.string(), v.null()),
@@ -94,6 +95,7 @@ export const list = query({
                 _id: thread._id,
                 draftSubject: thread.draftSubject,
                 draftBody: thread.draftBody,
+                draftedByModel: thread.draftedByModel ?? null,
                 sendStatus: thread.sendStatus,
                 agentmailOutboundId: thread.agentmailOutboundId,
                 lastReplySummary: thread.lastReplySummary,
@@ -118,9 +120,16 @@ export const updateDraft = mutation({
   handler: async (ctx, args) => {
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
-    await assertListingInSession(ctx, thread.listingId, await ownerKey(ctx, args.sessionId));
+    const listing = await assertListingInSession(
+      ctx,
+      thread.listingId,
+      await ownerKey(ctx, args.sessionId),
+    );
     if (thread.sendStatus === "sending" || thread.sendStatus === "sent") {
       throw new Error("This inquiry has already been sent and can no longer be edited.");
+    }
+    if (!thread.draftedByModel) {
+      throw new Error("Generate this inquiry with OpenAI before approving it.");
     }
 
     const subject = args.subject.trim();
@@ -136,6 +145,7 @@ export const updateDraft = mutation({
       draftBody: body,
       sendStatus: "ready",
     });
+    await ctx.db.patch(listing._id, { status: "drafted" });
     return null;
   },
 });

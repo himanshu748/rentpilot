@@ -30,7 +30,7 @@ const stages = [
   {
     name: "Drafted",
     detail:
-      "RentPilot writes an inquiry you can edit. It stays a draft until you save it, and saving is what marks it ready.",
+      "OpenAI writes a grounded inquiry from the retained evidence. You can edit it, but no live message can become ready without that model-generated draft.",
   },
   {
     name: "Contacted",
@@ -88,7 +88,7 @@ export default function Home() {
                   </h1>
                   <p className="lp-lede">
                     RentPilot ranks rooms against your brief, shows the evidence behind
-                    every score, and drafts one inquiry for you to approve. It will not
+                    every score, and uses OpenAI to draft one inquiry for you to approve. It will not
                     fetch from a source, or email anyone, until the permission for that
                     is on the record.
                   </p>

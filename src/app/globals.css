@@ -229,6 +229,10 @@ main:focus { outline: none; }
 .draft-preview { margin-top: 13px; padding: 13px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 7px; }
 .draft-preview strong { display: block; padding-bottom: 9px; border-bottom: 1px solid var(--hairline); font-size: 12px; }
 .draft-preview p { margin: 10px 0 0; color: #3f4c46; font-size: 12px; line-height: 1.55; }
+.draft-empty { display: flex; align-items: flex-start; gap: 10px; margin-top: 13px; padding: 13px; color: var(--ink-muted); border: 1px dashed #b8b1a4; background: rgb(244 240 232 / 55%); border-radius: 7px; }
+.draft-empty svg { flex: 0 0 auto; margin-top: 1px; color: var(--sage-strong); }
+.draft-empty strong { display: block; color: var(--ink); font-size: 12px; }
+.draft-empty p { max-width: 36ch; margin: 4px 0 0; font-size: 11px; line-height: 1.5; }
 .draft-editor { display: grid; gap: 10px; margin-top: 13px; }
 .draft-editor label { display: grid; gap: 6px; color: var(--ink-muted); font: 650 10px var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
 .draft-editor input, .draft-editor textarea { width: 100%; padding: 10px; color: var(--ink); border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; font: 400 13px/1.5 var(--sans); text-transform: none; letter-spacing: 0; resize: vertical; }

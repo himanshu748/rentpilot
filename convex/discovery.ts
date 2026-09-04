@@ -185,9 +185,9 @@ export const persistExtractedListing = internalMutation({
     const listingId = await ctx.db.insert("listings", listingFields);
     await ctx.db.insert("threads", {
       listingId,
-      draftSubject: `Viewing request: ${args.extracted.title}`,
-      draftBody: `Hi, I found your ${args.extracted.bedrooms.toLowerCase()} in ${args.extracted.locality}. Is it still available? I would like to arrange a viewing this week.`,
-      sendStatus: hasContact ? "ready" : "draft",
+      draftSubject: "",
+      draftBody: "",
+      sendStatus: "draft",
       sendRequestId: null,
       agentmailOutboundId: null,
       agentMailThreadRef: null,

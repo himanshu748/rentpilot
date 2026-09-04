@@ -96,6 +96,7 @@ export const demo = internalMutation({
         listingId,
         draftSubject: `Viewing request: ${row.title}`,
         draftBody: `Hi, I found your ${row.bedrooms.toLowerCase()} in ${row.locality}. Is it still available? I would like to arrange a viewing this week.`,
+        draftedByModel: "demo-fixture",
         sendStatus: row.email && index === 0 ? "ready" : "draft",
         sendRequestId: null,
         agentmailOutboundId: null,

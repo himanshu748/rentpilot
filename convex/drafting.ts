@@ -92,6 +92,7 @@ export const saveGeneratedDraft = internalMutation({
     await ctx.db.patch(thread._id, {
       draftSubject: args.subject,
       draftBody: args.body,
+      draftedByModel: args.model,
       sendStatus: "draft",
     });
     await ctx.db.insert("activity", {
@@ -133,7 +134,7 @@ export const writeInquiry = action({
         "OpenAI is not configured. Set OPENAI_API_KEY with: npx convex env set OPENAI_API_KEY sk-...",
       );
     }
-    const model = process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
+    const model = process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
 
     const tone =
       args.tone === "brief"

@@ -40,6 +40,12 @@ export const sendApprovedDraft = mutation({
     if (thread.sendStatus !== "ready") {
       throw new Error("Save and approve the draft before sending.");
     }
+    if (!thread.draftedByModel) {
+      throw new Error("This inquiry must be generated with OpenAI before it can be sent.");
+    }
+    if (thread.draftSubject.trim().length < 3 || thread.draftBody.trim().length < 20) {
+      throw new Error("The OpenAI draft is incomplete. Generate it again before sending.");
+    }
 
     if (listing.isDemo) {
       throw new Error("Synthetic demo recipients are never emailed.");

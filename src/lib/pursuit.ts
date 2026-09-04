@@ -32,6 +32,7 @@ export type Pursuit = {
   scoreBreakdown: { label: string; score: number; max: number; note: string }[];
   draftSubject: string;
   draftBody: string;
+  draftedByModel: string | null;
   sendStatus?: SendStatus;
   lastReplySummary: string | null;
   lastReplyFrom: string | null;

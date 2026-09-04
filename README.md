@@ -78,7 +78,9 @@ npx convex env set OPENAI_API_KEY your_openai_key
 npx convex env set OPENAI_MODEL gpt-4o-mini   # optional, this is the default
 ```
 
-Until `OPENAI_API_KEY` is set, the "Write with OpenAI" control stays disabled and says so.
+There is no canned or manual fallback for live inquiries. Until `OPENAI_API_KEY` is set,
+the "Write with OpenAI" control stays disabled, and the server refuses to approve or send
+any live thread that does not carry model provenance written by the OpenAI action.
 
 Firecrawl is authenticated locally and its key is configured on the Convex deployment. Its
 server-side connectivity probe (`npx convex run discovery:probeFirecrawl`) returns a live

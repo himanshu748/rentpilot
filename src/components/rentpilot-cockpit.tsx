@@ -412,6 +412,7 @@ function EvidencePanel({
   const [confirming, setConfirming] = useState(false);
   const [subject, setSubject] = useState(pursuit.draftSubject);
   const [body, setBody] = useState(pursuit.draftBody);
+  const [draftedByModel, setDraftedByModel] = useState(pursuit.draftedByModel);
   const requestIdRef = useRef<string | null>(null);
   const syncedRef = useRef<string | null>(null);
 
@@ -424,11 +425,15 @@ function EvidencePanel({
 
   const sendState: SendStatus = pursuit.sendStatus ?? "draft";
   const editable = !pursuit.isDemo && sendState !== "sending" && sendState !== "sent";
-  const canSave = editable && Boolean(pursuit.contact) && subject.trim().length > 3 && body.trim().length > 20;
+  const hasModelDraft = Boolean(draftedByModel);
+  const hasDraftContent = subject.trim().length >= 3 && body.trim().length >= 20;
+  const showDraft = hasDraftContent && (hasModelDraft || Boolean(pursuit.isDemo));
+  const canSave = editable && hasModelDraft && Boolean(pursuit.contact) && hasDraftContent;
   const canSend = Boolean(
     agentmailConfigured &&
     pursuit.threadId &&
     pursuit.contact &&
+    hasModelDraft &&
     sendState === "ready" &&
     !pursuit.isDemo,
   );
@@ -462,6 +467,7 @@ function EvidencePanel({
       const written = await onWriteDraft(pursuit);
       setSubject(written.subject);
       setBody(written.body);
+      setDraftedByModel(written.model);
       setEditing(true);
       toast.success(`${written.model} wrote a draft. Read it before you approve it.`);
     } catch (error) {
@@ -472,7 +478,7 @@ function EvidencePanel({
   }
 
   async function saveDraft() {
-    if (!canSave) return toast.error("Add a recipient and complete the draft first.");
+    if (!canSave) return toast.error("Generate the inquiry with OpenAI, then add a recipient and review the draft.");
     setSaving(true);
     try {
       await onSaveDraft(pursuit, subject, body);
@@ -510,6 +516,10 @@ function EvidencePanel({
 
   const actionNote = pursuit.isDemo
     ? "Demo-safe: synthetic recipients are never emailed."
+    : !hasModelDraft && !openaiConfigured
+      ? "OpenAI is required. Add its deployment key to generate this inquiry."
+      : !hasModelDraft
+        ? "Generate the grounded OpenAI draft before review and delivery."
     : !agentmailConfigured
       ? "AgentMail is waiting for its deployment key."
       : confirming
@@ -560,23 +570,31 @@ function EvidencePanel({
                 type="button"
                 onClick={writeDraft}
                 disabled={writing || !openaiConfigured}
+                aria-busy={writing}
                 title={openaiConfigured ? undefined : "Set OPENAI_API_KEY on the Convex deployment"}
               >
                 <Sparkles size={13} aria-hidden="true" />
                 {writing ? "Writing…" : "Write with OpenAI"}
               </button>
-              <button className="text-button" type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Cancel" : "Edit"}</button>
+              {hasModelDraft && (
+                <button className="text-button" type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Cancel" : "Edit"}</button>
+              )}
             </div>
           )}
         </div>
         {editing ? (
           <div className="draft-editor">
-            <label>Subject<input value={subject} onChange={(event) => setSubject(event.target.value)} /></label>
-            <label>Message<textarea rows={5} value={body} onChange={(event) => setBody(event.target.value)} /></label>
-            <button className="secondary-action" type="button" onClick={saveDraft} disabled={saving}>{saving ? "Saving…" : "Save draft"}</button>
+            <label>Subject<input name="subject" maxLength={120} value={subject} onChange={(event) => setSubject(event.target.value)} /></label>
+            <label>Message<textarea name="message" maxLength={5000} rows={5} value={body} onChange={(event) => setBody(event.target.value)} /></label>
+            <button className="secondary-action" type="button" onClick={saveDraft} disabled={saving} aria-busy={saving}>{saving ? "Saving…" : "Save draft"}</button>
           </div>
-        ) : (
+        ) : showDraft ? (
           <div className="draft-preview"><strong>{subject}</strong><p>{body}</p></div>
+        ) : (
+          <div className="draft-empty" aria-live="polite">
+            <Sparkles size={18} aria-hidden="true" />
+            <div><strong>No inquiry yet</strong><p>OpenAI must draft from the retained evidence before you can review, approve or send.</p></div>
+          </div>
         )}
         {pursuit.outboundId && (
           <p className={cn("delivery-chip", sendState === "failed" && "is-failed")}>
@@ -599,6 +617,7 @@ function EvidencePanel({
           className={cn("send-action", confirming && "is-confirming")}
           type="button"
           disabled={!canSend || sending}
+          aria-busy={sending}
           onClick={sendDraft}
         >
           <Send size={16} aria-hidden="true" />
@@ -704,8 +723,11 @@ export function RentPilotCockpit() {
         max: part.label === "Freshness" ? 15 : part.label === "Evidence" ? 25 : 30,
         note: part.note,
       })),
-      draftSubject: item.thread?.draftSubject ?? `Viewing request: ${item.title}`,
-      draftBody: item.thread?.draftBody ?? "Please complete this draft before sending.",
+      draftSubject:
+        item.isDemo || item.thread?.draftedByModel ? (item.thread?.draftSubject ?? "") : "",
+      draftBody:
+        item.isDemo || item.thread?.draftedByModel ? (item.thread?.draftBody ?? "") : "",
+      draftedByModel: item.thread?.draftedByModel ?? null,
       sendStatus: item.thread?.sendStatus,
       lastReplySummary: item.thread?.lastReplySummary ?? null,
       lastReplyFrom: item.thread?.lastReplyFrom ?? null,

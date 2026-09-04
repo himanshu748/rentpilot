@@ -96,6 +96,7 @@ export default defineSchema({
     listingId: v.id("listings"),
     draftSubject: v.string(),
     draftBody: v.string(),
+    draftedByModel: v.optional(v.string()),
     sendStatus,
     sendRequestId: v.union(v.string(), v.null()),
     agentmailOutboundId: v.union(v.string(), v.null()),

@@ -217,6 +217,10 @@ main:focus { outline: none; }
 .missing-callout { display: flex; gap: 7px; align-items: center; margin-top: 10px; padding: 9px 10px; color: #75501f; background: #f6ead0; font-size: 11px; line-height: 1.4; border-radius: 5px; }
 .missing-callout svg { flex: 0 0 auto; }
 .text-button { padding: 4px 0; color: var(--sage-strong); border: 0; background: transparent; font-size: 12px; font-weight: 700; cursor: pointer; }
+.draft-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
+.write-button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; color: var(--ink); border: 1px solid var(--hairline); background: var(--surface); border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; transition: border-color 150ms ease, background-color 150ms ease; }
+.write-button:hover:not(:disabled) { border-color: #9db6a2; background: var(--sage-soft); }
+.write-button:disabled { color: #7c827d; background: #efece3; cursor: not-allowed; }
 .draft-preview { margin-top: 13px; padding: 13px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 7px; }
 .draft-preview strong { display: block; padding-bottom: 9px; border-bottom: 1px solid var(--hairline); font-size: 12px; }
 .draft-preview p { margin: 10px 0 0; color: #3f4c46; font-size: 12px; line-height: 1.55; }

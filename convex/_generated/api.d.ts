@@ -9,6 +9,7 @@
  */
 
 import type * as discovery from "../discovery.js";
+import type * as drafting from "../drafting.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as pursuits from "../pursuits.js";
@@ -24,6 +25,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   discovery: typeof discovery;
+  drafting: typeof drafting;
   email: typeof email;
   http: typeof http;
   pursuits: typeof pursuits;

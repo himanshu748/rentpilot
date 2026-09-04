@@ -267,11 +267,15 @@ export const integrationStatus = query({
   returns: v.object({
     agentmailConfigured: v.boolean(),
     firecrawlConfigured: v.boolean(),
+    openaiConfigured: v.boolean(),
+    openaiModel: v.string(),
     inboxId: v.string(),
   }),
   handler: async () => ({
     agentmailConfigured: Boolean(process.env.AGENTMAIL_API_KEY),
     firecrawlConfigured: Boolean(process.env.FIRECRAWL_API_KEY),
+    openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
+    openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
     inboxId: process.env.AGENTMAIL_INBOX_ID ?? "rentpilot-himanshu@agentmail.to",
   }),
 });

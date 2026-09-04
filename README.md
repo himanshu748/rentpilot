@@ -14,7 +14,8 @@ This repository is the working Convex All Gas Hackathon build.
 - Convex schema with bounded indexed queries for sources, criteria, listings, threads, activity and validation runs
 - Session-isolated reads and writes: a browser session sees its own pursuits plus the shared demo workspace, never another session's
 - Live Convex demo dataset, labeled as synthetic in the product, with skeleton rows while the first query resolves
-- Explainable ranking with confidence and missing-evidence penalties
+- Explainable ranking with confidence and missing-evidence penalties, computed in Convex and never by a model
+- OpenAI drafts the inquiry from the listing evidence and your must-haves, grounded so it cannot invent move-in dates or personal details, and always left for you to edit and approve
 - Human-editable inquiry drafts saved through Convex mutations, locked once an inquiry has been sent
 - AgentMail component, durable send boundary, stable per-draft idempotency key, two-step human confirmation, live delivery status folded back into the pursuit thread and a webhook route
 - Anime.js transitions for pursuit entry and state progress, deferred until the tab is visible and skipped under reduced motion
@@ -60,6 +61,16 @@ Register the AgentMail webhook at:
 ```text
 https://your-deployment.convex.site/agentmail/webhook
 ```
+
+OpenAI writes the inquiry drafts. Ranking stays deterministic in Convex, so the model
+never decides which room is best, only how to ask about it.
+
+```bash
+npx convex env set OPENAI_API_KEY your_openai_key
+npx convex env set OPENAI_MODEL gpt-4o-mini   # optional, this is the default
+```
+
+Until `OPENAI_API_KEY` is set, the "Write with OpenAI" control stays disabled and says so.
 
 Firecrawl is authenticated locally and its key is configured on the anonymous Convex deployment. Its server-side connectivity probe succeeds without an OpenAI key. Ranking remains deterministic and explainable, so this build does not require OpenAI.
 

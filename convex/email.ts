@@ -15,13 +15,13 @@ export const sendApprovedDraft = mutation({
   },
   returns: vOutboundId,
   handler: async (ctx, args) => {
-    if (!process.env.AGENTMAIL_API_KEY) {
-      throw new Error("AgentMail is not configured for this deployment.");
-    }
-
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
     const listing = await assertListingInSession(ctx, thread.listingId, args.sessionId);
+
+    if (!process.env.AGENTMAIL_API_KEY) {
+      throw new Error("AgentMail is not configured for this deployment.");
+    }
 
     if (thread.sendRequestId === args.requestId && thread.agentmailOutboundId) {
       return thread.agentmailOutboundId as typeof vOutboundId.type;

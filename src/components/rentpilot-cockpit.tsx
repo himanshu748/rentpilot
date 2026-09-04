@@ -2,7 +2,7 @@
 
 import { animate, stagger } from "animejs";
 import type { OutboundId } from "@agentmail/convex";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Activity,
@@ -350,20 +350,25 @@ function EvidencePanel({
   pursuit,
   inDialog,
   agentmailConfigured,
+  openaiConfigured,
   onSaveDraft,
   onSend,
   onSyncDelivery,
+  onWriteDraft,
 }: {
   pursuit: Pursuit;
   inDialog: boolean;
   agentmailConfigured: boolean;
+  openaiConfigured: boolean;
   onSaveDraft: (pursuit: Pursuit, subject: string, body: string) => Promise<void>;
   onSend: (pursuit: Pursuit, requestId: string) => Promise<void>;
   onSyncDelivery: (pursuit: Pursuit) => Promise<void>;
+  onWriteDraft: (pursuit: Pursuit) => Promise<{ subject: string; body: string; model: string }>;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [writing, setWriting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [subject, setSubject] = useState(pursuit.draftSubject);
   const [body, setBody] = useState(pursuit.draftBody);
@@ -408,6 +413,21 @@ function EvidencePanel({
     const timer = window.setTimeout(() => setConfirming(false), 8000);
     return () => window.clearTimeout(timer);
   }, [confirming]);
+
+  async function writeDraft() {
+    setWriting(true);
+    try {
+      const written = await onWriteDraft(pursuit);
+      setSubject(written.subject);
+      setBody(written.body);
+      setEditing(true);
+      toast.success(`${written.model} wrote a draft. Read it before you approve it.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "OpenAI could not write this draft.");
+    } finally {
+      setWriting(false);
+    }
+  }
 
   async function saveDraft() {
     if (!canSave) return toast.error("Add a recipient and complete the draft first.");
@@ -492,7 +512,19 @@ function EvidencePanel({
         <div className="section-title-row">
           <div><span className="eyebrow">Human approval required</span><h3>Inquiry draft</h3></div>
           {editable && (
-            <button className="text-button" type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Cancel" : "Edit"}</button>
+            <div className="draft-tools">
+              <button
+                className="write-button"
+                type="button"
+                onClick={writeDraft}
+                disabled={writing || !openaiConfigured}
+                title={openaiConfigured ? undefined : "Set OPENAI_API_KEY on the Convex deployment"}
+              >
+                <Sparkles size={13} aria-hidden="true" />
+                {writing ? "Writing…" : "Write with OpenAI"}
+              </button>
+              <button className="text-button" type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Cancel" : "Edit"}</button>
+            </div>
           )}
         </div>
         {editing ? (
@@ -550,6 +582,7 @@ export function RentPilotCockpit() {
   const updateDraft = useMutation(api.pursuits.updateDraft);
   const sendApprovedDraft = useMutation(api.email.sendApprovedDraft);
   const syncDeliveryState = useMutation(api.email.syncDeliveryState);
+  const writeInquiry = useAction(api.drafting.writeInquiry);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | PursuitStatus>("all");
   const [query, setQuery] = useState("");
@@ -725,6 +758,11 @@ export function RentPilotCockpit() {
     [sessionId, syncDeliveryState],
   );
 
+  async function writePursuitDraft(pursuit: Pursuit) {
+    if (!pursuit.listingId) throw new Error("This pursuit is not saved in Convex yet.");
+    return await writeInquiry({ listingId: pursuit.listingId, sessionId: sessionId ?? undefined });
+  }
+
   async function saveSearchBrief(criteria: SearchCriteria) {
     if (!sessionId) throw new Error("Your search session is still loading. Try again in a moment.");
     await saveCriteria({ sessionId, ...criteria });
@@ -752,9 +790,11 @@ export function RentPilotCockpit() {
       pursuit={selected}
       inDialog={isCompact}
       agentmailConfigured={integrationStatus?.agentmailConfigured ?? false}
+      openaiConfigured={integrationStatus?.openaiConfigured ?? false}
       onSaveDraft={savePursuitDraft}
       onSend={sendPursuitDraft}
       onSyncDelivery={syncPursuitDelivery}
+      onWriteDraft={writePursuitDraft}
     />
   ) : (
     <EmptyEvidencePanel city={activeCriteria.city} onEditCriteria={() => setCriteriaOpen(true)} />

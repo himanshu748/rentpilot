@@ -6,7 +6,9 @@ This repository is the working Convex All Gas Hackathon build.
 
 ## What works
 
-- Responsive pursuit cockpit with desktop, tablet and phone compositions
+- Landing page at `/` that states the product, the six pursuit stages and the recorded source-policy refusal
+- Geist Sans and Geist Mono self-hosted through `next/font`, matching the brand system
+- Responsive pursuit cockpit at `/app` with desktop, tablet and phone compositions
 - Session-persistent search briefs for any city, preferred areas, budget, home types and must-haves without requiring account setup
 - City-scoped pursuit queues and source readiness, with an honest empty state when a city has no approved source yet
 - Convex schema with bounded indexed queries for sources, criteria, listings, threads, activity and validation runs
@@ -33,7 +35,15 @@ In another terminal, seed the labeled demo workspace once:
 npx convex run seed:demo
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000` for the landing page, or go straight to the product at
+`http://localhost:3000/app`.
+
+## Routes
+
+| Route  | What it is                                                        |
+| ------ | ----------------------------------------------------------------- |
+| `/`    | Landing page. Static, explains the product and the source policy.  |
+| `/app` | The pursuit cockpit. Live Convex queries and mutations.            |
 
 ## Integration configuration
 

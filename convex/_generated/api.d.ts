@@ -13,6 +13,7 @@ import type * as drafting from "../drafting.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as pursuits from "../pursuits.js";
+import type * as sampleSource from "../sampleSource.js";
 import type * as seed from "../seed.js";
 import type * as session from "../session.js";
 import type * as workspace from "../workspace.js";
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   http: typeof http;
   pursuits: typeof pursuits;
+  sampleSource: typeof sampleSource;
   seed: typeof seed;
   session: typeof session;
   workspace: typeof workspace;

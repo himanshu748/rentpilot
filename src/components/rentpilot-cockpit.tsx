@@ -57,6 +57,8 @@ type SearchCriteria = {
   localities: string[];
   bedrooms: string[];
   mustHaves: string[];
+  contactName: string;
+  contactEmail: string | null;
 };
 
 const defaultCriteria: SearchCriteria = {
@@ -66,7 +68,14 @@ const defaultCriteria: SearchCriteria = {
   localities: ["HSR Layout", "Koramangala", "Indiranagar"],
   bedrooms: ["Private room", "1 BHK"],
   mustHaves: ["No brokerage", "Move-in before 15 Sep"],
+  contactName: "",
+  contactEmail: null,
 };
+
+/** Deliberately permissive: enough to catch a typo, not to police valid addresses. */
+function isEmailish(value: string) {
+  return /^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(value);
+}
 
 const homeTypes = ["Private room", "1 BHK", "2 BHK", "Shared room"];
 
@@ -109,6 +118,17 @@ function runWhenVisible(play: () => void) {
   return () => document.removeEventListener("visibilitychange", onVisibilityChange);
 }
 
+/**
+ * Convex wraps server errors with an "Uncaught Error:" prefix and a stack
+ * trace. Neither belongs in a toast, so keep only the sentence we wrote.
+ */
+function readableError(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback;
+  const firstLine = error.message.split("\n")[0] ?? "";
+  const cleaned = firstLine.replace(/^(Uncaught\s+)?Error:\s*/i, "").trim();
+  return cleaned || fallback;
+}
+
 function splitValues(value: string) {
   return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
 }
@@ -142,6 +162,8 @@ function CriteriaDialog({
   const [budgetMax, setBudgetMax] = useState(String(criteria.budgetMax));
   const [bedrooms, setBedrooms] = useState(criteria.bedrooms);
   const [mustHaves, setMustHaves] = useState(criteria.mustHaves.join(", "));
+  const [contactName, setContactName] = useState(criteria.contactName);
+  const [contactEmail, setContactEmail] = useState(criteria.contactEmail ?? "");
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -160,6 +182,9 @@ function CriteriaDialog({
       nextErrors.budget = "Set a maximum budget higher than the minimum.";
     }
     if (bedrooms.length === 0) nextErrors.bedrooms = "Choose at least one home type.";
+    if (contactEmail.trim() && !isEmailish(contactEmail.trim())) {
+      nextErrors.contactEmail = "Enter an address a landlord could reply to.";
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -172,11 +197,13 @@ function CriteriaDialog({
         localities: splitValues(areas),
         bedrooms,
         mustHaves: splitValues(mustHaves),
+        contactName: contactName.trim(),
+        contactEmail: contactEmail.trim() || null,
       });
       onOpenChange(false);
       toast.success(`Search brief saved for ${city.trim()}`);
     } catch (error) {
-      setErrors({ form: error instanceof Error ? error.message : "Could not save this search brief." });
+      setErrors({ form: readableError(error, "Could not save this search brief.") });
     } finally {
       setSaving(false);
     }
@@ -235,6 +262,17 @@ function CriteriaDialog({
               <input id="criteria-must-haves" value={mustHaves} onChange={(event) => setMustHaves(event.target.value)} autoComplete="off" placeholder="No brokerage, furnished, near metro" />
               <small>These improve ranking and explain why a pursuit fits.</small>
             </label>
+            <div className="criteria-form-grid">
+              <label className="form-field" htmlFor="criteria-contact-name">
+                <span>Your name <small>optional</small></span>
+                <input id="criteria-contact-name" value={contactName} onChange={(event) => setContactName(event.target.value)} autoComplete="name" placeholder="Himanshu" />
+              </label>
+              <label className="form-field" htmlFor="criteria-contact-email">
+                <span>Your reply address <small>optional</small></span>
+                <input id="criteria-contact-email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} type="email" inputMode="email" autoComplete="email" spellCheck={false} placeholder="you@example.com" aria-invalid={Boolean(errors.contactEmail)} aria-describedby={errors.contactEmail ? "criteria-contact-email-error" : "criteria-contact-email-hint"} />
+                {errors.contactEmail ? <small id="criteria-contact-email-error" className="field-error">{errors.contactEmail}</small> : <small id="criteria-contact-email-hint">Added to your inquiry so a landlord can reply to you directly.</small>}
+              </label>
+            </div>
             <div className="criteria-form-actions">
               <Dialog.Close className="secondary-action" type="button">Cancel</Dialog.Close>
               <button className="primary-action" type="submit" disabled={saving}>{saving ? "Saving brief…" : "Save search brief"}</button>
@@ -423,7 +461,7 @@ function EvidencePanel({
       setEditing(true);
       toast.success(`${written.model} wrote a draft. Read it before you approve it.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "OpenAI could not write this draft.");
+      toast.error(readableError(error, "OpenAI could not write this draft."));
     } finally {
       setWriting(false);
     }
@@ -437,7 +475,7 @@ function EvidencePanel({
       setEditing(false);
       toast.success("Draft saved in Convex and ready for approval");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save this draft.");
+      toast.error(readableError(error, "Could not save this draft."));
     } finally {
       setSaving(false);
     }
@@ -456,7 +494,7 @@ function EvidencePanel({
       await onSend(pursuit, requestIdRef.current);
       toast.success("Approved inquiry queued with AgentMail");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "AgentMail could not queue this inquiry.");
+      toast.error(readableError(error, "AgentMail could not queue this inquiry."));
     } finally {
       setSending(false);
     }
@@ -583,11 +621,14 @@ export function RentPilotCockpit() {
   const sendApprovedDraft = useMutation(api.email.sendApprovedDraft);
   const syncDeliveryState = useMutation(api.email.syncDeliveryState);
   const writeInquiry = useAction(api.drafting.writeInquiry);
+  const sweepSampleSource = useAction(api.discovery.sweepSampleSource);
+  const registerSampleSource = useMutation(api.sampleSource.register);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | PursuitStatus>("all");
   const [query, setQuery] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sweeping, setSweeping] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -765,24 +806,47 @@ export function RentPilotCockpit() {
 
   async function saveSearchBrief(criteria: SearchCriteria) {
     if (!sessionId) throw new Error("Your search session is still loading. Try again in a moment.");
-    await saveCriteria({ sessionId, ...criteria });
+    await saveCriteria({
+      sessionId,
+      ...criteria,
+      contactEmail: criteria.contactEmail ?? undefined,
+    });
     setDetailOpen(false);
     setSelectedId(null);
     setQuery("");
     setStatusFilter("all");
   }
 
-  function explainSourceSweep() {
+  async function runSourceSweep() {
     if (!integrationStatus?.firecrawlConfigured) {
       toast.info("Firecrawl is waiting for its Convex deployment key.");
       return;
     }
-    toast.info(
-      sweepReady
-        ? `Firecrawl is ready to sweep approved ${activeCriteria.city} sources against this brief.`
-        : `No ${activeCriteria.city} source has granted written permission yet, so no sweep can run.`,
-    );
+    setSweeping(true);
+    try {
+      if (!sweepReady) {
+        await registerSampleSource({ city: activeCriteria.city });
+        toast.info(`Sample source approved for ${activeCriteria.city}.`);
+      }
+      const result = await sweepSampleSource({
+        sessionId: sessionId ?? undefined,
+        city: activeCriteria.city,
+        areas: activeCriteria.localities,
+      });
+      if (result.failed === result.attempted) {
+        toast.error(readableError(new Error(result.firstError ?? ""), "Firecrawl could not reach the source."));
+      } else {
+        toast.success(
+          `Firecrawl read ${result.attempted - result.failed} of ${result.attempted} pages in ${Math.round(result.durationMs / 100) / 10}s. ${result.inserted} new, ${result.updated} refreshed.`,
+        );
+      }
+    } catch (error) {
+      toast.error(readableError(error, "The sweep could not run."));
+    } finally {
+      setSweeping(false);
+    }
   }
+
 
   const panel = selected ? (
     <EvidencePanel
@@ -888,9 +952,9 @@ export function RentPilotCockpit() {
                     : `${visiblePursuits.length} ${visiblePursuits.length === 1 ? "option" : "options"} with a clear next step`}
               </p>
             </div>
-            <button className={sweepReady ? "primary-action" : "secondary-action sweep-action"} type="button" onClick={explainSourceSweep}>
+            <button className={sweepReady ? "primary-action" : "secondary-action sweep-action"} type="button" onClick={runSourceSweep} disabled={sweeping}>
               <Radar size={16} aria-hidden="true" />
-              <span className="action-label">{sweepReady ? `Run ${activeCriteria.city} sweep` : "Check source readiness"}</span>
+              <span className="action-label">{sweeping ? "Sweeping…" : sweepReady ? `Run ${activeCriteria.city} sweep` : "Approve source and sweep"}</span>
             </button>
           </div>
           <div className="toolbar">
@@ -910,7 +974,7 @@ export function RentPilotCockpit() {
             ) : query || statusFilter !== "all" ? (
               <div className="empty-state"><Search size={22} aria-hidden="true" /><h3>No pursuits match</h3><p>Clear the search or choose another stage.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Reset filters</button></div>
             ) : (
-              <div className="empty-state"><MapPin size={22} aria-hidden="true" /><h3>No pursuits in {activeCriteria.city} yet</h3><p>Your search brief is saved. Nothing is fetched until a {activeCriteria.city} source grants written permission.</p><button type="button" onClick={explainSourceSweep}>Check source readiness</button></div>
+              <div className="empty-state"><MapPin size={22} aria-hidden="true" /><h3>No pursuits in {activeCriteria.city} yet</h3><p>Your search brief is saved. Nothing is fetched until a {activeCriteria.city} source grants written permission.</p><button type="button" onClick={runSourceSweep} disabled={sweeping}>{sweeping ? "Sweeping…" : sweepReady ? `Run the ${activeCriteria.city} sweep` : `Approve a ${activeCriteria.city} source and sweep`}</button></div>
             )}
           </div>
           <section className="decision-note"><Sparkles size={17} aria-hidden="true" /><div><strong>Why this queue is different</strong><p>Each score shows its evidence. Missing contact details reduce confidence instead of disappearing behind a recommendation.</p></div></section>

@@ -46,6 +46,8 @@ export default defineSchema({
     localities: v.array(v.string()),
     bedrooms: v.array(v.string()),
     mustHaves: v.array(v.string()),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
     updatedAt: v.number(),
   })
     .index("by_updated_at", ["updatedAt"])
@@ -97,7 +99,11 @@ export default defineSchema({
     sentAt: v.union(v.number(), v.null()),
     lastReplyIntent: v.union(v.string(), v.null()),
     lastReplySummary: v.union(v.string(), v.null()),
-  }).index("by_listing", ["listingId"]),
+    lastReplyFrom: v.optional(v.string()),
+    lastReplyAt: v.optional(v.number()),
+  })
+    .index("by_listing", ["listingId"])
+    .index("by_agentmail_thread", ["agentMailThreadRef"]),
 
   activity: defineTable({
     sessionId: v.optional(v.string()),

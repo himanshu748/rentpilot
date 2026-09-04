@@ -1,6 +1,6 @@
 import { FirecrawlClient } from "@firecrawl/firecrawl-convex";
 import { v } from "convex/values";
-import { components, internal } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   action,
@@ -8,6 +8,7 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
+import { listingUrl, sampleListings, sampleSourceHost } from "./sampleSource";
 
 const firecrawl = new FirecrawlClient(components.firecrawl);
 
@@ -50,6 +51,24 @@ export const getSourceForDiscovery = internalQuery({
   returns: approvedSource,
   handler: async (ctx, args) => {
     const source = await ctx.db.get(args.sourceId);
+    return source
+      ? {
+          _id: source._id,
+          domain: source.domain,
+          permissionStatus: source.permissionStatus,
+        }
+      : null;
+  },
+});
+
+export const getSourceByDomain = internalQuery({
+  args: { domain: v.string() },
+  returns: approvedSource,
+  handler: async (ctx, args) => {
+    const source = await ctx.db
+      .query("sources")
+      .withIndex("by_domain", (q) => q.eq("domain", args.domain))
+      .unique();
     return source
       ? {
           _id: source._id,
@@ -280,6 +299,100 @@ export const scrapeApprovedListing = action({
       extracted,
       sessionId: args.sessionId,
     });
+  },
+});
+
+/**
+ * Runs Firecrawl across the sample source this deployment operates and permits.
+ * Every page still goes through scrapeApprovedListing, so the permission and
+ * host checks apply here exactly as they do to a one-off scrape.
+ */
+export const sweepSampleSource = action({
+  args: { sessionId: v.optional(v.string()), city: v.string(), areas: v.array(v.string()) },
+  returns: v.object({
+    attempted: v.number(),
+    inserted: v.number(),
+    updated: v.number(),
+    failed: v.number(),
+    durationMs: v.number(),
+    firstError: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const site = process.env.CONVEX_SITE_URL;
+    const host = sampleSourceHost();
+    if (!site || !host) {
+      throw new Error("CONVEX_SITE_URL is not available on this deployment.");
+    }
+    if (!site.startsWith("https://")) {
+      throw new Error(
+        "The sample source needs a deployed backend. Firecrawl cannot reach a local " +
+          "Convex backend, so run this against a convex.site deployment.",
+      );
+    }
+    const source: DiscoverySource | null = await ctx.runQuery(
+      internal.discovery.getSourceByDomain,
+      { domain: host },
+    );
+    if (!source) {
+      throw new Error("Run sampleSource:register once before sweeping.");
+    }
+    if (source.permissionStatus !== "approved") {
+      throw new Error("Written source permission is required before discovery.");
+    }
+
+    const areas = args.areas.map((area) => area.trim()).filter(Boolean);
+    if (areas.length === 0) {
+      throw new Error("Add at least one preferred area before sweeping.");
+    }
+    const targets = sampleListings.map((listing, index) => ({
+      listing,
+      place: { city: args.city, area: areas[index % areas.length] },
+    }));
+
+    const startedAt = Date.now();
+    let inserted = 0;
+    let updated = 0;
+    let failed = 0;
+    let firstError: string | null = null;
+
+    for (const target of targets) {
+      try {
+        const result: DiscoveryResult = await ctx.runAction(
+          api.discovery.scrapeApprovedListing,
+          {
+            sourceId: source._id,
+            url: listingUrl(site, target.listing.slug, target.place),
+            sessionId: args.sessionId,
+          },
+        );
+        if (result.inserted) inserted += 1;
+        else updated += 1;
+      } catch (error) {
+        failed += 1;
+        firstError ??= error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    const durationMs = Date.now() - startedAt;
+    await ctx.runMutation(api.workspace.recordValidationRun, {
+      sourceDomain: host,
+      permissionStatus: source.permissionStatus,
+      attempted: sampleListings.length,
+      parsed: inserted + updated,
+      deduplicated: updated,
+      contactable: inserted + updated,
+      durationMs,
+      notes: firstError ?? "Sweep completed",
+    });
+
+    return {
+      attempted: sampleListings.length,
+      inserted,
+      updated,
+      failed,
+      durationMs,
+      firstError,
+    };
   },
 });
 

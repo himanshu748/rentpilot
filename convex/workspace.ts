@@ -24,10 +24,17 @@ const criteriaResult = v.union(
     localities: v.array(v.string()),
     bedrooms: v.array(v.string()),
     mustHaves: v.array(v.string()),
+    contactName: v.string(),
+    contactEmail: v.union(v.string(), v.null()),
     updatedAt: v.number(),
   }),
   v.null(),
 );
+
+/** Deliberately permissive: enough to catch a typo, not to police valid addresses. */
+export function isEmailish(value: string) {
+  return /^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(value);
+}
 
 export const getCriteria = query({
   args: { sessionId: v.optional(v.string()) },
@@ -52,6 +59,8 @@ export const getCriteria = query({
           ...criteria,
           city: criteria.city ?? "Bengaluru",
           sessionId: criteria.sessionId ?? null,
+          contactName: criteria.contactName ?? "",
+          contactEmail: criteria.contactEmail ?? null,
         }
       : null;
   },
@@ -66,10 +75,17 @@ export const saveCriteria = mutation({
     localities: v.array(v.string()),
     bedrooms: v.array(v.string()),
     mustHaves: v.array(v.string()),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
   },
   returns: v.id("criteria"),
   handler: async (ctx, args) => {
     const city = args.city.trim();
+    const contactName = args.contactName?.trim() ?? "";
+    const contactEmail = args.contactEmail?.trim() ?? "";
+    if (contactEmail && !isEmailish(contactEmail)) {
+      throw new Error("Enter an email address a landlord could reply to.");
+    }
     const localities = [...new Set(args.localities.map((area) => area.trim()).filter(Boolean))];
     const bedrooms = [...new Set(args.bedrooms.map((type) => type.trim()).filter(Boolean))];
     const mustHaves = [...new Set(args.mustHaves.map((item) => item.trim()).filter(Boolean))];
@@ -89,6 +105,8 @@ export const saveCriteria = mutation({
       localities,
       bedrooms,
       mustHaves,
+      contactName: contactName || undefined,
+      contactEmail: contactEmail || undefined,
       updatedAt: Date.now(),
     });
     await ctx.db.insert("activity", {

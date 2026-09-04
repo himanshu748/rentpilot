@@ -23,6 +23,8 @@ const draftContext = v.union(
     missingFields: v.array(v.string()),
     mustHaves: v.array(v.string()),
     budgetMax: v.number(),
+    renterName: v.string(),
+    renterEmail: v.union(v.string(), v.null()),
     alreadySent: v.boolean(),
   }),
   v.null(),
@@ -59,6 +61,8 @@ export const getDraftContext = internalQuery({
       missingFields: listing.missingFields,
       mustHaves: criteria?.mustHaves ?? [],
       budgetMax: criteria?.budgetMax ?? 0,
+      renterName: criteria?.contactName ?? "",
+      renterEmail: criteria?.contactEmail ?? null,
       alreadySent: thread.sendStatus === "sending" || thread.sendStatus === "sent",
     };
   },
@@ -146,6 +150,8 @@ export const writeInquiry = action({
       context.missingFields.length > 0
         ? `Details the listing does not state: ${context.missingFields.join(", ")}`
         : null,
+      context.renterName ? `Sender's name: ${context.renterName}` : null,
+      context.renterEmail ? `Sender's reply address: ${context.renterEmail}` : null,
     ]
       .filter(Boolean)
       .join("\n");
@@ -168,6 +174,8 @@ export const writeInquiry = action({
               "Use only the facts given. Never invent move-in dates, budgets, employment, " +
               "references or personal details. Never claim to be an agent or to have viewed " +
               "the property. If a detail is listed as missing, ask about it in one clause. " +
+              "If a sender name is given, sign off with it. If a reply address is given, state " +
+              "it once so the landlord can answer directly. Never invent either. " +
               'Reply as JSON: {"subject": string, "body": string}. The subject is under 70 ' +
               "characters. The body is plain text, no greeting placeholders like [Name], and " +
               "signs off with nothing after the final sentence.",

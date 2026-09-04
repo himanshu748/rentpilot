@@ -15,13 +15,15 @@ This repository is the working Convex All Gas Hackathon build.
 - City-scoped pursuit queues and source readiness, with an honest empty state when a city has no approved source yet
 - Convex schema with bounded indexed queries for sources, criteria, listings, threads, activity and validation runs
 - Session-isolated reads and writes: a browser session sees its own pursuits plus the shared demo workspace, never another session's
-- Live Convex demo dataset, labeled as synthetic in the product, with skeleton rows while the first query resolves
+- Live Convex demo dataset, labeled as synthetic and read-only in the product, with skeleton rows while the first query resolves
 - Explainable ranking with confidence and missing-evidence penalties, computed in Convex and never by a model
 - OpenAI drafts the inquiry from the listing evidence and your must-haves, grounded so it cannot invent move-in dates or personal details, and always left for you to edit and approve
 - Human-editable inquiry drafts saved through Convex mutations, locked once an inquiry has been sent
 - AgentMail component, durable send boundary, stable per-draft idempotency key, two-step human confirmation, live delivery status folded back into the pursuit thread and a webhook route
 - Anime.js transitions for pursuit entry and state progress, deferred until the tab is visible and skipped under reduced motion
 - Honest credential gates for Firecrawl discovery and AgentMail delivery
+- Signed-in, server-derived ownership and hourly account limits around paid Firecrawl, OpenAI and AgentMail calls
+- Idempotent AgentMail reply ingestion, with the reply sender, timestamp and summary shown on the pursuit
 - Keyboard-complete: skip link, focus-visible rings, Escape and focus return on the mobile evidence dialog
 
 ## Local setup
@@ -50,11 +52,12 @@ Open `http://localhost:3000` for the landing page, or go straight to the product
 
 ## Integration configuration
 
-The AgentMail inbox provisioned for this build is `rentpilot-himanshu@agentmail.to`.
+Keep the sending inbox in deployment configuration rather than publishing it in the repository.
 
 ```bash
-npx convex env set AGENTMAIL_INBOX_ID rentpilot-himanshu@agentmail.to
+npx convex env set AGENTMAIL_INBOX_ID your-inbox@agentmail.to
 npx convex env set AGENTMAIL_API_KEY your_agentmail_key
+npx convex env set SAMPLE_SOURCE_CONTACT a-controlled-recipient@example.com
 npx convex env set AGENTMAIL_WEBHOOK_SECRET your_webhook_secret
 ```
 
@@ -93,7 +96,7 @@ The sweep runs through the same permission and host checks as any other source, 
 it only works against a deployed backend: Firecrawl cannot reach a local Convex backend, and
 `scrapeApprovedListing` refuses anything that is not https.
 
-The first real third-party source candidate is `bengaluru.rent`. Firecrawl extracted its terms and confirmed that automated extraction requires written permission. No listings or private contact details were imported. RentPilot attempted a permission request from `rentpilot-himanshu@agentmail.to`, but the recipient mail server was unreachable and AgentMail returned a delivery-failure notice. Convex records the failed delivery and keeps the source policy-gated until a valid contact path grants written permission.
+The first real third-party source candidate is `bengaluru.rent`. Firecrawl extracted its terms and confirmed that automated extraction requires written permission. No listings or private contact details were imported. RentPilot attempted a permission request from its configured AgentMail inbox, but the recipient mail server was unreachable and AgentMail returned a delivery-failure notice. Convex records the failed delivery and keeps the source policy-gated until a valid contact path grants written permission.
 
 Do not scrape a source before its policy status is recorded as approved.
 

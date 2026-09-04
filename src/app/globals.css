@@ -234,6 +234,12 @@ main:focus { outline: none; }
 .draft-editor input, .draft-editor textarea { width: 100%; padding: 10px; color: var(--ink); border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; font: 400 13px/1.5 var(--sans); text-transform: none; letter-spacing: 0; resize: vertical; }
 .delivery-chip { display: flex; align-items: center; gap: 7px; margin: 12px 0 0; padding: 9px 10px; color: #2d5741; border: 1px solid #cad8c6; background: #f1f7ef; border-radius: 6px; font: 550 11px var(--mono); }
 .delivery-chip.is-failed { color: #8c3928; border-color: rgb(183 67 50 / 30%); background: rgb(183 67 50 / 6%); }
+.reply-card { margin-top: 12px; padding: 12px; border: 1px solid #b9cdbd; background: #edf5eb; border-radius: 7px; }
+.reply-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #356046; font: 650 10px var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.reply-card-head span { display: inline-flex; align-items: center; gap: 6px; }
+.reply-card-head time { color: var(--muted); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.reply-card > strong { display: block; color: var(--ink); font-size: 12px; }
+.reply-card > p { margin: 5px 0 0; color: #3f4c46; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
 .delivery-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: currentcolor; }
 .send-action { width: 100%; margin-top: 12px; border: 0; color: #fff; background: var(--vermilion); }
 .send-action.is-confirming { background: var(--vermilion-dark); box-shadow: 0 0 0 3px rgb(229 83 50 / 22%); }

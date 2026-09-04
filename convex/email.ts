@@ -8,7 +8,8 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { assertListingInSession, ownerKey } from "./session";
+import { reserveIntegrationUse } from "./rateLimits";
+import { assertListingInSession, requireUserKey } from "./session";
 import { sendStatus } from "./schema";
 
 const agentmail = new AgentMail(components.agentmail);
@@ -16,14 +17,15 @@ const agentmail = new AgentMail(components.agentmail);
 export const sendApprovedDraft = mutation({
   args: {
     threadId: v.id("threads"),
-    sessionId: v.optional(v.string()),
     requestId: v.string(),
   },
   returns: vOutboundId,
   handler: async (ctx, args) => {
+    if (args.requestId.length > 100) throw new Error("Send request id is too long.");
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
-    const listing = await assertListingInSession(ctx, thread.listingId, await ownerKey(ctx, args.sessionId));
+    const owner = await requireUserKey(ctx);
+    const listing = await assertListingInSession(ctx, thread.listingId, owner);
 
     if (!process.env.AGENTMAIL_API_KEY) {
       throw new Error("AgentMail is not configured for this deployment.");
@@ -48,6 +50,8 @@ export const sendApprovedDraft = mutation({
 
     const inboxId = process.env.AGENTMAIL_INBOX_ID;
     if (!inboxId) throw new Error("AGENTMAIL_INBOX_ID is not configured.");
+
+    await reserveIntegrationUse(ctx, owner, "agentmail");
 
     const outboundId = await agentmail.sendMessage(ctx, inboxId, {
       to: listing.contactEmail,
@@ -158,13 +162,23 @@ function readString(source: unknown, key: string) {
 
 /**
  * Inbound mail from AgentMail. Matched to a pursuit by the AgentMail thread id
- * recorded when the inquiry was sent. An unmatched reply is still recorded, so
- * a landlord's answer is never silently dropped.
+ * recorded when the inquiry was sent. Unmatched mail is left in AgentMail and
+ * never copied into the public shared activity feed.
  */
 export const onReplyReceived = internalMutation({
   args: { message: v.any(), thread: v.any(), eventId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const handled = await ctx.db
+      .query("agentmailEvents")
+      .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
+      .unique();
+    if (handled) return null;
+    await ctx.db.insert("agentmailEvents", {
+      eventId: args.eventId,
+      createdAt: Date.now(),
+    });
+
     const agentMailThreadId =
       readString(args.message, "thread_id") ?? readString(args.thread, "thread_id");
     const from = readString(args.message, "from") ?? "the landlord";
@@ -182,13 +196,6 @@ export const onReplyReceived = internalMutation({
       : null;
 
     if (!thread) {
-      await ctx.db.insert("activity", {
-        listingId: null,
-        type: "reply",
-        message: `Reply from ${from} arrived in the inbox but matched no open pursuit`,
-        createdAt: Date.now(),
-        isDemo: false,
-      });
       return null;
     }
 
@@ -215,7 +222,9 @@ export const onReplyReceived = internalMutation({
 });
 
 export const deliveryStatus = query({
-  args: { outboundId: vOutboundId },
+  args: {
+    threadId: v.id("threads"),
+  },
   returns: v.union(
     v.object({
       status: vOutboundStatus,
@@ -225,7 +234,16 @@ export const deliveryStatus = query({
     }),
     v.null(),
   ),
-  handler: async (ctx, args) => await agentmail.status(ctx, args.outboundId),
+  handler: async (ctx, args) => {
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread) return null;
+    await assertListingInSession(ctx, thread.listingId, await requireUserKey(ctx));
+    if (!thread.agentmailOutboundId) return null;
+    return await agentmail.status(
+      ctx,
+      thread.agentmailOutboundId as typeof vOutboundId.type,
+    );
+  },
 });
 
 /**
@@ -236,13 +254,16 @@ export const deliveryStatus = query({
 export const syncDeliveryState = mutation({
   args: {
     threadId: v.id("threads"),
-    sessionId: v.optional(v.string()),
   },
   returns: sendStatus,
   handler: async (ctx, args) => {
     const thread = await ctx.db.get(args.threadId);
     if (!thread) throw new Error("Inquiry thread not found.");
-    const listing = await assertListingInSession(ctx, thread.listingId, await ownerKey(ctx, args.sessionId));
+    const listing = await assertListingInSession(
+      ctx,
+      thread.listingId,
+      await requireUserKey(ctx),
+    );
     if (!thread.agentmailOutboundId) return thread.sendStatus;
 
     const delivery = await agentmail.status(

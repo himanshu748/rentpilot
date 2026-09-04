@@ -83,6 +83,7 @@ export default defineSchema({
     ),
     status: pursuitStatus,
     isDemo: v.boolean(),
+    isSample: v.optional(v.boolean()),
   })
     .index("by_last_seen_at", ["lastSeenAt"])
     .index("by_session_and_last_seen_at", ["sessionId", "lastSeenAt"])
@@ -139,4 +140,20 @@ export default defineSchema({
     notes: v.string(),
     createdAt: v.number(),
   }).index("by_created_at", ["createdAt"]),
+
+  integrationUsage: defineTable({
+    owner: v.string(),
+    capability: v.union(
+      v.literal("firecrawl"),
+      v.literal("openai"),
+      v.literal("agentmail"),
+    ),
+    windowStartedAt: v.number(),
+    count: v.number(),
+  }).index("by_owner_and_capability", ["owner", "capability"]),
+
+  agentmailEvents: defineTable({
+    eventId: v.string(),
+    createdAt: v.number(),
+  }).index("by_event_id", ["eventId"]),
 });

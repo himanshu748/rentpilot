@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery } from "./_generated/server";
-import { isListingInSession, ownerKey } from "./session";
+import { isListingInSession, requireUserKey } from "./session";
 
 /**
  * OpenAI writes the inquiry, never the ranking. Scores stay deterministic in
@@ -31,13 +31,12 @@ const draftContext = v.union(
 );
 
 export const getDraftContext = internalQuery({
-  args: { listingId: v.id("listings"), sessionId: v.optional(v.string()) },
+  args: { listingId: v.id("listings"), owner: v.string() },
   returns: draftContext,
   handler: async (ctx, args) => {
-    const owner = await ownerKey(ctx, args.sessionId);
     const listing = await ctx.db.get(args.listingId);
     if (!listing) return null;
-    if (!isListingInSession(listing, owner)) {
+    if (!isListingInSession(listing, args.owner)) {
       throw new Error("This pursuit belongs to another search session.");
     }
     const thread = await ctx.db
@@ -48,7 +47,7 @@ export const getDraftContext = internalQuery({
 
     const criteria = await ctx.db
       .query("criteria")
-      .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner))
+      .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.owner))
       .order("desc")
       .first();
 
@@ -72,7 +71,7 @@ export const getDraftContext = internalQuery({
 export const saveGeneratedDraft = internalMutation({
   args: {
     threadId: v.id("threads"),
-    sessionId: v.optional(v.string()),
+    owner: v.string(),
     subject: v.string(),
     body: v.string(),
     model: v.string(),
@@ -83,7 +82,7 @@ export const saveGeneratedDraft = internalMutation({
     if (!thread) throw new Error("Inquiry thread not found.");
     const listing = await ctx.db.get(thread.listingId);
     if (!listing) throw new Error("Pursuit not found.");
-    if (!isListingInSession(listing, await ownerKey(ctx, args.sessionId))) {
+    if (!isListingInSession(listing, args.owner)) {
       throw new Error("This pursuit belongs to another search session.");
     }
     if (thread.sendStatus === "sending" || thread.sendStatus === "sent") {
@@ -110,14 +109,18 @@ export const saveGeneratedDraft = internalMutation({
 export const writeInquiry = action({
   args: {
     listingId: v.id("listings"),
-    sessionId: v.optional(v.string()),
     tone: v.optional(v.union(v.literal("standard"), v.literal("brief"), v.literal("warm"))),
   },
   returns: v.object({ subject: v.string(), body: v.string(), model: v.string() }),
   handler: async (ctx, args) => {
+    const owner = await requireUserKey(ctx);
+    await ctx.runMutation(internal.rateLimits.reserve, {
+      owner,
+      capability: "openai",
+    });
     const context = await ctx.runQuery(internal.drafting.getDraftContext, {
       listingId: args.listingId,
-      sessionId: args.sessionId,
+      owner,
     });
     if (!context) throw new Error("This pursuit has no inquiry thread yet.");
     if (context.alreadySent) {
@@ -159,6 +162,7 @@ export const writeInquiry = action({
 
     const response = await fetch(OPENAI_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
@@ -166,6 +170,7 @@ export const writeInquiry = action({
       body: JSON.stringify({
         model,
         temperature: 0.4,
+        max_tokens: 400,
         response_format: { type: "json_object" },
         messages: [
           {
@@ -213,10 +218,13 @@ export const writeInquiry = action({
     if (subject.length < 3 || body.length < 20) {
       throw new Error("OpenAI returned a draft that was too short to send.");
     }
+    if (subject.length > 120 || body.length > 5_000) {
+      throw new Error("OpenAI returned a draft that was too long to review safely.");
+    }
 
     await ctx.runMutation(internal.drafting.saveGeneratedDraft, {
       threadId: context.threadId,
-      sessionId: args.sessionId,
+      owner,
       subject,
       body,
       model,

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 
 /**
  * A rental source that RentPilot operates itself and, in writing on the page,
@@ -57,7 +57,7 @@ export const sampleListings: SampleListing[] = [
 ];
 
 function contactEmail() {
-  return process.env.SAMPLE_SOURCE_CONTACT ?? process.env.AGENTMAIL_INBOX_ID ?? null;
+  return process.env.SAMPLE_SOURCE_CONTACT ?? null;
 }
 
 export function sampleSourceHost() {
@@ -153,7 +153,7 @@ export function renderListing(listing: SampleListing, place: SamplePlace) {
  * Registers this deployment's own sample source as approved, using the
  * deployment's convex.site hostname so the scrape host check matches.
  */
-export const register = mutation({
+export const register = internalMutation({
   args: { city: v.string() },
   returns: v.object({ domain: v.string(), cities: v.array(v.string()) }),
   handler: async (ctx, args) => {
@@ -164,12 +164,20 @@ export const register = mutation({
     }
     const city = args.city.trim();
     if (city.length < 2) throw new Error("Choose a city before approving the sample source.");
+    if (city.length > 60) throw new Error("City names must be 60 characters or fewer.");
 
     const existing = await ctx.db
       .query("sources")
       .withIndex("by_domain", (q) => q.eq("domain", host))
       .unique();
-    const cities = [...new Set([...(existing?.cities ?? []), city])];
+    if (existing) {
+      if (existing.cities?.length !== 1 || existing.cities[0] !== "Any city") {
+        await ctx.db.patch(existing._id, { cities: ["Any city"] });
+      }
+      return { domain: host, cities: ["Any city"] };
+    }
+
+    const cities = ["Any city"];
     const fields = {
       domain: host,
       name: "RentPilot sample source",
@@ -180,16 +188,12 @@ export const register = mutation({
       isDemo: false,
       permissionRequestedAt: Date.now(),
     };
-    if (existing) {
-      await ctx.db.patch(existing._id, fields);
-    } else {
-      await ctx.db.insert("sources", fields);
-    }
+    await ctx.db.insert("sources", fields);
 
     await ctx.db.insert("activity", {
       listingId: null,
       type: "system",
-      message: `RentPilot sample source approved for ${city}`,
+      message: "RentPilot sample source approved for controlled discovery",
       createdAt: Date.now(),
       isDemo: false,
     });

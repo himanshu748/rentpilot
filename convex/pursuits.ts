@@ -34,6 +34,7 @@ const pursuit = v.object({
   scoreBreakdown: v.array(scorePart),
   status: pursuitStatus,
   isDemo: v.boolean(),
+  isSample: v.boolean(),
   thread: v.union(
     v.object({
       _id: v.id("threads"),
@@ -41,6 +42,9 @@ const pursuit = v.object({
       draftBody: v.string(),
       sendStatus,
       agentmailOutboundId: v.union(v.string(), v.null()),
+      lastReplySummary: v.union(v.string(), v.null()),
+      lastReplyFrom: v.union(v.string(), v.null()),
+      lastReplyAt: v.union(v.number(), v.null()),
     }),
     v.null(),
   ),
@@ -82,6 +86,7 @@ export const list = query({
 
         return {
           ...listing,
+          isSample: listing.isSample ?? false,
           sourceName: source?.name ?? "Unknown source",
           sourceDomain: source?.domain ?? "unknown",
           thread: thread
@@ -91,6 +96,9 @@ export const list = query({
                 draftBody: thread.draftBody,
                 sendStatus: thread.sendStatus,
                 agentmailOutboundId: thread.agentmailOutboundId,
+                lastReplySummary: thread.lastReplySummary,
+                lastReplyFrom: thread.lastReplyFrom ?? null,
+                lastReplyAt: thread.lastReplyAt ?? null,
               }
             : null,
         };
@@ -119,6 +127,9 @@ export const updateDraft = mutation({
     const body = args.body.trim();
     if (subject.length < 3 || body.length < 20) {
       throw new Error("A useful subject and message are required.");
+    }
+    if (subject.length > 120 || body.length > 5_000) {
+      throw new Error("Keep the subject under 120 characters and the message under 5,000.");
     }
     await ctx.db.patch(args.threadId, {
       draftSubject: subject,

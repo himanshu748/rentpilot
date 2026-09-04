@@ -1,6 +1,6 @@
 import { FirecrawlClient } from "@firecrawl/firecrawl-convex";
 import { v } from "convex/values";
-import { api, components, internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   action,
@@ -9,7 +9,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { listingUrl, sampleListings, sampleSourceHost } from "./sampleSource";
-import { ownerKey } from "./session";
+import { requireUserKey } from "./session";
 
 const firecrawl = new FirecrawlClient(components.firecrawl);
 
@@ -87,6 +87,7 @@ export const persistExtractedListing = internalMutation({
     contentHash: v.string(),
     extracted: extractedListing,
     sessionId: v.optional(v.string()),
+    isSample: v.optional(v.boolean()),
   },
   returns: v.object({
     listingId: v.id("listings"),
@@ -173,6 +174,7 @@ export const persistExtractedListing = internalMutation({
       ],
       status: existing?.status ?? ("new" as const),
       isDemo: false,
+      isSample: args.isSample ?? false,
     };
 
     if (existing) {
@@ -205,11 +207,12 @@ export const persistExtractedListing = internalMutation({
   },
 });
 
-export const scrapeApprovedListing = action({
+export const scrapeApprovedListingInternal = internalAction({
   args: {
     sourceId: v.id("sources"),
     url: v.string(),
-    sessionId: v.optional(v.string()),
+    owner: v.string(),
+    isSample: v.optional(v.boolean()),
   },
   returns: v.object({
     listingId: v.id("listings"),
@@ -292,18 +295,45 @@ export const scrapeApprovedListing = action({
       canonicalUrl: parsedUrl.toString(),
       contentHash,
       extracted,
-      sessionId: await ownerKey(ctx, args.sessionId),
+      sessionId: args.owner,
+      isSample: args.isSample,
+    });
+  },
+});
+
+export const scrapeApprovedListing = action({
+  args: {
+    sourceId: v.id("sources"),
+    url: v.string(),
+  },
+  returns: v.object({
+    listingId: v.id("listings"),
+    inserted: v.boolean(),
+    score: v.number(),
+  }),
+  handler: async (ctx, args): Promise<DiscoveryResult> => {
+    const owner = await requireUserKey(ctx);
+    if (args.url.length > 2_048) throw new Error("Source URLs must be 2,048 characters or fewer.");
+    await ctx.runMutation(internal.rateLimits.reserve, {
+      owner,
+      capability: "firecrawl",
+    });
+    return await ctx.runAction(internal.discovery.scrapeApprovedListingInternal, {
+      sourceId: args.sourceId,
+      url: args.url,
+      owner,
+      isSample: false,
     });
   },
 });
 
 /**
  * Runs Firecrawl across the sample source this deployment operates and permits.
- * Every page still goes through scrapeApprovedListing, so the permission and
+ * Every page goes through the same internal scraper, so the permission and
  * host checks apply here exactly as they do to a one-off scrape.
  */
 export const sweepSampleSource = action({
-  args: { sessionId: v.optional(v.string()), city: v.string(), areas: v.array(v.string()) },
+  args: { city: v.string(), areas: v.array(v.string()) },
   returns: v.object({
     attempted: v.number(),
     inserted: v.number(),
@@ -313,6 +343,7 @@ export const sweepSampleSource = action({
     firstError: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
+    const owner = await requireUserKey(ctx);
     const site = process.env.CONVEX_SITE_URL;
     const host = sampleSourceHost();
     if (!site || !host) {
@@ -324,25 +355,36 @@ export const sweepSampleSource = action({
           "Convex backend, so run this against a convex.site deployment.",
       );
     }
+    await ctx.runMutation(internal.sampleSource.register, { city: args.city });
     const source: DiscoverySource | null = await ctx.runQuery(
       internal.discovery.getSourceByDomain,
       { domain: host },
     );
-    if (!source) {
-      throw new Error("Run sampleSource:register once before sweeping.");
-    }
+    if (!source) throw new Error("The sample source could not be registered.");
     if (source.permissionStatus !== "approved") {
       throw new Error("Written source permission is required before discovery.");
     }
 
-    const areas = args.areas.map((area) => area.trim()).filter(Boolean);
+    if (args.areas.length > 20) {
+      throw new Error("Keep the sweep to 20 preferred areas or fewer.");
+    }
+    const areas = [...new Set(args.areas.map((area) => area.trim()).filter(Boolean))];
     if (areas.length === 0) {
       throw new Error("Add at least one preferred area before sweeping.");
+    }
+    if (areas.some((area) => area.length > 60)) {
+      throw new Error("Area names must be 60 characters or fewer.");
     }
     const targets = sampleListings.map((listing, index) => ({
       listing,
       place: { city: args.city, area: areas[index % areas.length] },
     }));
+
+    await ctx.runMutation(internal.rateLimits.reserve, {
+      owner,
+      capability: "firecrawl",
+      cost: targets.length,
+    });
 
     const startedAt = Date.now();
     let inserted = 0;
@@ -353,11 +395,12 @@ export const sweepSampleSource = action({
     for (const target of targets) {
       try {
         const result: DiscoveryResult = await ctx.runAction(
-          api.discovery.scrapeApprovedListing,
+          internal.discovery.scrapeApprovedListingInternal,
           {
             sourceId: source._id,
             url: listingUrl(site, target.listing.slug, target.place),
-            sessionId: args.sessionId,
+            owner,
+            isSample: true,
           },
         );
         if (result.inserted) inserted += 1;
@@ -369,7 +412,7 @@ export const sweepSampleSource = action({
     }
 
     const durationMs = Date.now() - startedAt;
-    await ctx.runMutation(api.workspace.recordValidationRun, {
+    await ctx.runMutation(internal.workspace.recordValidationRun, {
       sourceDomain: host,
       permissionStatus: source.permissionStatus,
       attempted: sampleListings.length,

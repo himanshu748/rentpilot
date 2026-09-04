@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { ownerKey, userKey } from "./session";
+import { isAnonymousSessionId, ownerKey, userKey } from "./session";
 
 const permissionStatus = v.union(
   v.literal("approved"),
@@ -86,17 +86,42 @@ export const saveCriteria = mutation({
     const city = args.city.trim();
     const contactName = args.contactName?.trim() ?? "";
     const contactEmail = args.contactEmail?.trim() ?? "";
+    const userId = await getAuthUserId(ctx);
+    if (!userId && !isAnonymousSessionId(args.sessionId)) {
+      throw new Error("This anonymous session id is invalid.");
+    }
+    if (args.localities.length > 20 || args.bedrooms.length > 10 || args.mustHaves.length > 20) {
+      throw new Error("Keep the search brief to a focused set of preferences.");
+    }
     if (contactEmail && !isEmailish(contactEmail)) {
       throw new Error("Enter an email address a landlord could reply to.");
+    }
+    if (contactEmail.length > 254 || contactName.length > 80) {
+      throw new Error("Contact details are too long.");
     }
     const localities = [...new Set(args.localities.map((area) => area.trim()).filter(Boolean))];
     const bedrooms = [...new Set(args.bedrooms.map((type) => type.trim()).filter(Boolean))];
     const mustHaves = [...new Set(args.mustHaves.map((item) => item.trim()).filter(Boolean))];
 
-    if (city.length < 2) throw new Error("Choose a city for this search.");
+    if (city.length < 2 || city.length > 60) {
+      throw new Error("Choose a city between 2 and 60 characters.");
+    }
+    if (
+      localities.some((value) => value.length > 80) ||
+      bedrooms.some((value) => value.length > 40) ||
+      mustHaves.some((value) => value.length > 120)
+    ) {
+      throw new Error("One or more search preferences are too long.");
+    }
     if (localities.length === 0) throw new Error("Add at least one preferred area.");
     if (bedrooms.length === 0) throw new Error("Choose at least one home type.");
-    if (args.budgetMin < 0 || args.budgetMax <= args.budgetMin) {
+    if (
+      !Number.isFinite(args.budgetMin) ||
+      !Number.isFinite(args.budgetMax) ||
+      args.budgetMin < 0 ||
+      args.budgetMax > 100_000_000 ||
+      args.budgetMax <= args.budgetMin
+    ) {
       throw new Error("Maximum budget must be higher than minimum budget.");
     }
 
@@ -180,8 +205,8 @@ export const claimAnonymousSession = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Sign in before claiming a search.");
     const owner = userKey(userId);
-    if (args.sessionId === owner) {
-      return { criteria: 0, listings: 0, activity: 0 };
+    if (!isAnonymousSessionId(args.sessionId)) {
+      throw new Error("This anonymous session id is invalid.");
     }
 
     const [criteria, listings, activity] = await Promise.all([
@@ -248,14 +273,25 @@ export const listSources = query({
       notes: v.string(),
       isDemo: v.boolean(),
       cities: v.optional(v.array(v.string())),
-      permissionRequestedAt: v.optional(v.number()),
-      permissionThreadId: v.optional(v.string()),
     }),
   ),
-  handler: async (ctx) => await ctx.db.query("sources").withIndex("by_domain").take(20),
+  handler: async (ctx) => {
+    const sources = await ctx.db.query("sources").withIndex("by_domain").take(20);
+    return sources.map((source) => ({
+      _id: source._id,
+      _creationTime: source._creationTime,
+      domain: source.domain,
+      name: source.name,
+      type: source.type,
+      permissionStatus: source.permissionStatus,
+      notes: source.notes,
+      isDemo: source.isDemo,
+      cities: source.cities,
+    }));
+  },
 });
 
-export const registerSourceCandidate = mutation({
+export const registerSourceCandidate = internalMutation({
   args: {
     domain: v.string(),
     name: v.string(),
@@ -307,7 +343,7 @@ export const registerSourceCandidate = mutation({
   },
 });
 
-export const assignSourceCities = mutation({
+export const assignSourceCities = internalMutation({
   args: {
     domain: v.string(),
     cities: v.array(v.string()),
@@ -326,7 +362,7 @@ export const assignSourceCities = mutation({
   },
 });
 
-export const recordPermissionDeliveryFailure = mutation({
+export const recordPermissionDeliveryFailure = internalMutation({
   args: {
     domain: v.string(),
     deliveryThreadId: v.string(),
@@ -363,18 +399,18 @@ export const integrationStatus = query({
     firecrawlConfigured: v.boolean(),
     openaiConfigured: v.boolean(),
     openaiModel: v.string(),
-    inboxId: v.string(),
+    sampleContactConfigured: v.boolean(),
   }),
   handler: async () => ({
     agentmailConfigured: Boolean(process.env.AGENTMAIL_API_KEY),
     firecrawlConfigured: Boolean(process.env.FIRECRAWL_API_KEY),
     openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
     openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-    inboxId: process.env.AGENTMAIL_INBOX_ID ?? "rentpilot-himanshu@agentmail.to",
+    sampleContactConfigured: Boolean(process.env.SAMPLE_SOURCE_CONTACT),
   }),
 });
 
-export const recordValidationRun = mutation({
+export const recordValidationRun = internalMutation({
   args: {
     sourceDomain: v.string(),
     permissionStatus: v.string(),

@@ -1,7 +1,7 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const demo = mutation({
+export const demo = internalMutation({
   args: {},
   returns: v.object({ inserted: v.boolean() }),
   handler: async (ctx) => {

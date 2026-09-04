@@ -23,11 +23,25 @@ export function userKey(userId: Id<"users">) {
   return `user:${userId}`;
 }
 
+export function isAnonymousSessionId(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+export async function requireUserKey(ctx: { auth: Auth }) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error("Sign in to use live integrations.");
+  }
+  return userKey(userId);
+}
+
 export function isListingInSession(
   listing: Doc<"listings">,
   owner: string | undefined,
 ) {
-  return listing.sessionId === undefined || listing.sessionId === owner;
+  return Boolean(owner) && listing.sessionId === owner;
 }
 
 export async function assertListingInSession(
@@ -38,7 +52,11 @@ export async function assertListingInSession(
   const listing = await ctx.db.get(listingId);
   if (!listing) throw new Error("Pursuit not found.");
   if (!isListingInSession(listing, owner)) {
-    throw new Error("This pursuit belongs to another search session.");
+    throw new Error(
+      listing.sessionId === undefined
+        ? "Shared demo pursuits are read-only. Run a source sweep to create your own."
+        : "This pursuit belongs to another search session.",
+    );
   }
   return listing;
 }

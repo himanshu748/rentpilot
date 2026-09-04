@@ -33,7 +33,11 @@ export type Pursuit = {
   draftSubject: string;
   draftBody: string;
   sendStatus?: SendStatus;
+  lastReplySummary: string | null;
+  lastReplyFrom: string | null;
+  lastReplyAt: string | null;
   isDemo?: boolean;
+  isSample?: boolean;
 };
 
 /** Progress stages shown on the pursuit rail. "closed" is terminal, not a stage. */

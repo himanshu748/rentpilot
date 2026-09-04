@@ -1,7 +1,6 @@
 "use client";
 
 import { animate, stagger } from "animejs";
-import type { OutboundId } from "@agentmail/convex";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -418,11 +417,13 @@ function EvidencePanel({
 
   const delivery = useQuery(
     api.email.deliveryStatus,
-    pursuit.outboundId ? { outboundId: pursuit.outboundId as OutboundId } : "skip",
+    pursuit.outboundId && pursuit.threadId
+      ? { threadId: pursuit.threadId }
+      : "skip",
   );
 
   const sendState: SendStatus = pursuit.sendStatus ?? "draft";
-  const editable = sendState !== "sending" && sendState !== "sent";
+  const editable = !pursuit.isDemo && sendState !== "sending" && sendState !== "sent";
   const canSave = editable && Boolean(pursuit.contact) && subject.trim().length > 3 && body.trim().length > 20;
   const canSend = Boolean(
     agentmailConfigured &&
@@ -584,6 +585,16 @@ function EvidencePanel({
             {delivery?.errorMessage ? `: ${delivery.errorMessage}` : ""}
           </p>
         )}
+        {pursuit.lastReplySummary && (
+          <div className="reply-card">
+            <div className="reply-card-head">
+              <span><Mail size={14} aria-hidden="true" />Landlord reply</span>
+              {pursuit.lastReplyAt && <time>{pursuit.lastReplyAt}</time>}
+            </div>
+            <strong>{pursuit.lastReplyFrom ?? "Reply received"}</strong>
+            <p>{pursuit.lastReplySummary}</p>
+          </div>
+        )}
         <button
           className={cn("send-action", confirming && "is-confirming")}
           type="button"
@@ -626,7 +637,6 @@ export function RentPilotCockpit() {
   const syncDeliveryState = useMutation(api.email.syncDeliveryState);
   const writeInquiry = useAction(api.drafting.writeInquiry);
   const sweepSampleSource = useAction(api.discovery.sweepSampleSource);
-  const registerSampleSource = useMutation(api.sampleSource.register);
   const claimAnonymousSession = useMutation(api.workspace.claimAnonymousSession);
   const { signOut } = useAuthActions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -681,6 +691,8 @@ export function RentPilotCockpit() {
       source: item.sourceName,
       sourceNote: item.isDemo
         ? "Synthetic record from Convex, used for the workflow demonstration"
+        : item.isSample
+          ? "Sample evidence fetched with Firecrawl from RentPilot's permitted source"
         : `Evidence retained from ${item.sourceDomain}`,
       discovered: new Date(item.discoveredAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
       seen: new Date(item.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
@@ -695,7 +707,18 @@ export function RentPilotCockpit() {
       draftSubject: item.thread?.draftSubject ?? `Viewing request: ${item.title}`,
       draftBody: item.thread?.draftBody ?? "Please complete this draft before sending.",
       sendStatus: item.thread?.sendStatus,
+      lastReplySummary: item.thread?.lastReplySummary ?? null,
+      lastReplyFrom: item.thread?.lastReplyFrom ?? null,
+      lastReplyAt: item.thread?.lastReplyAt
+        ? new Date(item.thread.lastReplyAt).toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : null,
       isDemo: item.isDemo,
+      isSample: item.isSample,
     }));
   }, [backendPursuits]);
 
@@ -733,7 +756,11 @@ export function RentPilotCockpit() {
   const citySources = useMemo(
     () =>
       (backendSources ?? []).filter((source) =>
-        source.cities?.some((city) => city.toLowerCase() === activeCriteria.city.toLowerCase()),
+        source.cities?.some(
+          (city) =>
+            city === "Any city" ||
+            city.toLowerCase() === activeCriteria.city.toLowerCase(),
+        ),
       ),
     [activeCriteria.city, backendSources],
   );
@@ -795,20 +822,27 @@ export function RentPilotCockpit() {
   async function sendPursuitDraft(pursuit: Pursuit, requestId: string) {
     if (!pursuit.threadId) throw new Error("This pursuit has no inquiry thread yet.");
     if (pursuit.isDemo) throw new Error("Synthetic demo recipients cannot be emailed.");
-    await sendApprovedDraft({ threadId: pursuit.threadId, sessionId: sessionId ?? undefined, requestId });
+    await sendApprovedDraft({ threadId: pursuit.threadId, requestId });
   }
 
   const syncPursuitDelivery = useCallback(
     async (pursuit: Pursuit) => {
       if (!pursuit.threadId) return;
-      await syncDeliveryState({ threadId: pursuit.threadId, sessionId: sessionId ?? undefined });
+      await syncDeliveryState({ threadId: pursuit.threadId });
     },
-    [sessionId, syncDeliveryState],
+    [syncDeliveryState],
   );
 
   async function writePursuitDraft(pursuit: Pursuit) {
     if (!pursuit.listingId) throw new Error("This pursuit is not saved in Convex yet.");
-    return await writeInquiry({ listingId: pursuit.listingId, sessionId: sessionId ?? undefined });
+    if (!viewer) {
+      setSignInOpen(true);
+      throw new Error("Sign in before using OpenAI to write a live inquiry.");
+    }
+    if (pursuit.isDemo) {
+      throw new Error("Shared demo pursuits are read-only. Run a source sweep first.");
+    }
+    return await writeInquiry({ listingId: pursuit.listingId });
   }
 
   async function claimSessionAfterSignIn() {
@@ -839,18 +873,18 @@ export function RentPilotCockpit() {
   }
 
   async function runSourceSweep() {
+    if (!viewer) {
+      setSignInOpen(true);
+      toast.info("Sign in to run the live Firecrawl sweep.");
+      return;
+    }
     if (!integrationStatus?.firecrawlConfigured) {
       toast.info("Firecrawl is waiting for its Convex deployment key.");
       return;
     }
     setSweeping(true);
     try {
-      if (!sweepReady) {
-        await registerSampleSource({ city: activeCriteria.city });
-        toast.info(`Sample source approved for ${activeCriteria.city}.`);
-      }
       const result = await sweepSampleSource({
-        sessionId: sessionId ?? undefined,
         city: activeCriteria.city,
         areas: activeCriteria.localities,
       });
@@ -858,7 +892,7 @@ export function RentPilotCockpit() {
         toast.error(readableError(new Error(result.firstError ?? ""), "Firecrawl could not reach the source."));
       } else {
         toast.success(
-          `Firecrawl read ${result.attempted - result.failed} of ${result.attempted} pages in ${Math.round(result.durationMs / 100) / 10}s. ${result.inserted} new, ${result.updated} refreshed.`,
+          `Firecrawl read ${result.attempted - result.failed} of ${result.attempted} pages in ${Math.round(result.durationMs / 100) / 10}s. ${result.inserted} new, ${result.updated} refreshed.${integrationStatus.sampleContactConfigured ? "" : " Add SAMPLE_SOURCE_CONTACT to test delivery."}`,
         );
       }
     } catch (error) {
@@ -1044,7 +1078,7 @@ export function RentPilotCockpit() {
       <nav className="mobile-bottom-nav" aria-label="Mobile primary">
         <a href="#pursuits" className="is-active"><Inbox size={18} aria-hidden="true" /><span>Pursuits</span></a>
         <a href="#activity"><Activity size={18} aria-hidden="true" /><span>Activity</span></a>
-        <button type="button" onClick={() => toast.info(integrationStatus?.agentmailConfigured ? `AgentMail is connected as ${integrationStatus.inboxId}.` : "AgentMail inbox is ready and waiting for its deployment key.")}><Mail size={18} aria-hidden="true" /><span>Inbox</span></button>
+        <button type="button" onClick={() => toast.info(integrationStatus?.agentmailConfigured ? "AgentMail delivery is connected." : "AgentMail inbox is ready and waiting for its deployment key.")}><Mail size={18} aria-hidden="true" /><span>Inbox</span></button>
       </nav>
       <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} onSignedIn={claimSessionAfterSignIn} />
       <CriteriaDialog key={backendCriteria?._id ?? "default-criteria"} open={criteriaOpen} onOpenChange={setCriteriaOpen} criteria={activeCriteria} onSave={saveSearchBrief} />

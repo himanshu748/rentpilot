@@ -10,6 +10,7 @@ RentPilot searches for rooms using a renter's city, preferred areas, budget, hom
 - Public source: [https://github.com/himanshu748/rentpilot](https://github.com/himanshu748/rentpilot)
 - Demo video: pending recording of the final deployed loop
 - Judge walkthrough and demo script: [submission.md](./submission.md)
+- Real-ad research: [Bithauli/Bhitauli evidence and gaps](./docs/inventory-evidence.md); ads found, no exact-match vacancy or approved real source established
 - Community showcase: [Convex Discord show-and-tell](https://discord.com/channels/1019350475847499849/1141187289024839760/threads/1545677744849817620), posted September 5 with the live app, repo, screenshot and current limitations. This does not replace the required X/LinkedIn post.
 
 The app was started on August 31, 2026. The first commit is `93bf207`, after the August 25 eligibility date.

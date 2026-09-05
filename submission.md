@@ -26,6 +26,23 @@ The complete flow has passed on the deployed app using clearly labelled fictiona
 - Official event: https://www.convex.dev/hackathons/all-gas
 - Submission destination: https://vibeapps.dev/judging/convex-all-gas-hackathon-openai/submit
 - Registration: https://luma.com/convex-allgas-hackathon
+- Real-ad research and unresolved requirements: [inventory evidence](./docs/inventory-evidence.md)
+- Vibe Apps profile: https://vibeapps.dev/himanshu748 (username set and verified September 5)
+
+## Actual form check
+
+The official All Gas form was opened while signed in on September 5. Project title,
+tagline, description, live URL, repo URL, name, team name and all six sponsor/event tags
+were entered. The convex.site option was selected. **Submit App was not clicked.**
+These are unsent form contents, not a saved or accepted submission; do not assume the
+browser retains them after closing or reloading.
+
+The form asks for a public video URL (YouTube, Vimeo, etc.) and a required screenshot;
+it also allows up to four additional images. It has both LinkedIn and X share/profile
+fields, with inconsistent required/optional wording for LinkedIn. The official event
+still calls for an actual tagged X or LinkedIn post, so a profile link alone should not
+be presented as completed social proof. Contact email and team-size details need to
+be confirmed before the final form is sent. No public video URL exists yet.
 
 ## Judge walkthrough
 
@@ -91,6 +108,7 @@ Code: https://github.com/himanshu748/rentpilot
 - [x] Verify Luma registration (August 26 confirmation email checked September 5)
 - [ ] Participant confirms personal eligibility under the official rules
 - [ ] Record, inspect and publicly host the under-three-minute video
+- [ ] Obtain owner-confirmed, permission-backed real listing evidence before claiming a live inventory integration
 - [ ] Publish X or LinkedIn post with required sponsor tags; record URL
 - [ ] Add video and social URLs to this file and hackathon.md
 - [ ] Complete the actual vibeapps.dev fields and verify the resulting public submission page

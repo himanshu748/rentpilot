@@ -87,7 +87,8 @@ The production sender inbox and least-privilege API key are configured. The `mes
 
 ## Submission checklist
 
-- [ ] Confirm the participant is registered on the official Luma event and meets the eligibility rules
+- [x] Verify Luma registration (registration-confirmation email dated August 26, checked September 5)
+- [ ] Participant confirms personal eligibility under the official rules
 - [x] New application started after August 25
 - [x] Convex backend with queries, mutations, actions, real-time sync, auth, workflows, and components
 - [x] Public GitHub repository

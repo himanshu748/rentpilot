@@ -1,6 +1,6 @@
 # RentPilot submission packet
 
-Status: prepared locally; not a verified hackathon submission. The demo video, registration check, social post and final form remain open until their confirmations are recorded below.
+Status: prepared locally; not a verified hackathon submission. Luma registration was confirmed by its August 26 confirmation email. The demo video, social post, personal eligibility confirmation and final form remain open until their confirmations are recorded below.
 
 ## Project copy
 
@@ -88,7 +88,8 @@ Code: https://github.com/himanshu748/rentpilot
 - [x] Live app and public repository
 - [x] Real sponsor integration loop verified on controlled fixtures
 - [x] 56 automated tests, build and typecheck pass; four generated-file lint warnings remain
-- [ ] Confirm participant's Luma registration and personal eligibility
+- [x] Verify Luma registration (August 26 confirmation email checked September 5)
+- [ ] Participant confirms personal eligibility under the official rules
 - [ ] Record, inspect and publicly host the under-three-minute video
 - [ ] Publish X or LinkedIn post with required sponsor tags; record URL
 - [ ] Add video and social URLs to this file and hackathon.md

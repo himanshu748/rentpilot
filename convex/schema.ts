@@ -20,8 +20,25 @@ export const sendStatus = v.union(
   v.literal("failed"),
 );
 
+export const amenityEvidence = v.array(v.object({
+  requirement: v.string(),
+  status: v.union(v.literal("present"), v.literal("absent"), v.literal("unknown")),
+  quote: v.string(),
+}));
+
+export const searchLead = v.object({
+  url: v.string(), title: v.string(), description: v.string(),
+  status: v.union(v.literal("permission_required"), v.literal("blocked"), v.literal("matched"), v.literal("excluded")),
+  note: v.string(),
+});
+
 export default defineSchema({
   ...authTables,
+
+  searchRuns: defineTable({
+    owner: v.string(), criteriaId: v.id("criteria"), query: v.string(),
+    results: v.array(searchLead), searchedAt: v.number(),
+  }).index("by_owner_and_criteria", ["owner", "criteriaId"]),
 
   sources: defineTable({
     domain: v.string(),
@@ -44,6 +61,8 @@ export default defineSchema({
   criteria: defineTable({
     sessionId: v.optional(v.string()),
     city: v.optional(v.string()),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
     budgetMin: v.number(),
     budgetMax: v.number(),
     localities: v.array(v.string()),
@@ -59,6 +78,8 @@ export default defineSchema({
   listings: defineTable({
     sessionId: v.optional(v.string()),
     city: v.optional(v.string()),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
     sourceId: v.id("sources"),
     externalListingId: v.union(v.string(), v.null()),
     canonicalUrl: v.string(),
@@ -69,6 +90,7 @@ export default defineSchema({
     rent: v.number(),
     locality: v.string(),
     bedrooms: v.string(),
+    amenityEvidence: v.optional(amenityEvidence),
     contactEmail: v.union(v.string(), v.null()),
     contactPhone: v.union(v.string(), v.null()),
     missingFields: v.array(v.string()),

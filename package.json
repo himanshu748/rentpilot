@@ -3,16 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "patch-package --error-on-fail",
     "dev": "next dev",
     "build": "next build --webpack",
+    "deploy": "npx @convex-dev/static-hosting deploy --dist out",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@agentmail/convex": "^0.1.0",
     "@auth/core": "^0.41.3",
     "@base-ui/react": "^1.7.0",
     "@convex-dev/auth": "^0.0.95",
+    "@convex-dev/static-hosting": "^0.2.1",
     "@convex-dev/workflow": "^0.4.6",
     "@firecrawl/firecrawl-convex": "^0.1.1",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -39,6 +43,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "patch-package": "8.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -4,9 +4,9 @@ import { ArrowRight, House, ShieldCheck } from "lucide-react";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "RentPilot | Rental pursuit control desk",
+  title: "RentPilot | Search rooms by area, budget and must-haves",
   description:
-    "RentPilot turns scattered room listings into traceable pursuits. Every score shows its evidence, and nothing is fetched or sent until you approve it.",
+    "Search for rooms in your chosen area, check listing details against your budget and must-haves, and review an AI-written inquiry before sending it.",
 };
 
 const factors = [
@@ -20,32 +20,32 @@ const stages = [
   {
     name: "Found",
     detail:
-      "A permitted source returns a listing. The canonical URL and a content hash are stored so the same room is never counted twice.",
+      "Search your chosen city and areas. Web leads link to the original sites so you can investigate each option.",
   },
   {
     name: "Reviewed",
     detail:
-      "The listing is scored against your brief. Missing fields are named, not hidden, and they lower the confidence figure.",
+      "For sources that allow extraction, RentPilot checks the rent, area, room type and your must-haves before adding a match.",
   },
   {
     name: "Drafted",
     detail:
-      "OpenAI writes a grounded inquiry from the retained evidence. You can edit it, but no live message can become ready without that model-generated draft.",
+      "OpenAI drafts an inquiry from the listing details. Edit the message to ask about availability, rent and what is included.",
   },
   {
     name: "Contacted",
     detail:
-      "You approve the send. AgentMail takes the message on a durable queue keyed to one request id, so a double click cannot send twice.",
+      "Check the source-listed email and the saved message, then confirm the send. Delivery status appears beside the inquiry.",
   },
   {
     name: "Replied",
     detail:
-      "The landlord answers in the same thread. Delivery state and failures are recorded against the pursuit.",
+      "Replies return to the RentPilot inbox. Automatic reply tracking in your matches is still being tested.",
   },
   {
     name: "Viewing",
     detail:
-      "The pursuit closes out with a booked viewing, or it is marked closed with the reason kept on the record.",
+      "Arrange a visit with the lister and check the room in person. RentPilot does not book appointments for you.",
   },
 ];
 
@@ -61,13 +61,13 @@ export default function Home() {
           <span>RentPilot</span>
         </span>
         <nav className="lp-bar-links" aria-label="Sections">
-          <a href="#gate">Policy gate</a>
-          <a href="#stages">Stages</a>
-          <a href="#score">Scoring</a>
-          <a href="#stack">Stack</a>
+          <a href="#gate">Listing checks</a>
+          <a href="#stages">How it works</a>
+          <a href="#score">Your requirements</a>
+          <a href="#stack">Built with</a>
         </nav>
         <Link className="lp-cta" href="/app">
-          Open the cockpit
+          Start your search
           <ArrowRight size={15} aria-hidden="true" />
         </Link>
       </header>
@@ -77,36 +77,36 @@ export default function Home() {
           <div className="lp-row">
             <div className="lp-marker" aria-hidden="true">
               <span>RentPilot</span>
-              <span>Pursuit desk</span>
+              <span>Room search</span>
             </div>
             <div className="lp-body">
               <div className="lp-hero-grid">
                 <div>
-                  <span className="lp-eyebrow">Rental operations, not a listings feed</span>
+                  <span className="lp-eyebrow">Room search, with the details checked</span>
                   <h1 className="lp-h1">
-                    Every room you chase becomes a pursuit with <em>a paper trail</em>.
+                    Find rooms that fit your <em>budget and must-haves</em>.
                   </h1>
                   <p className="lp-lede">
-                    RentPilot ranks rooms against your brief, shows the evidence behind
-                    every score, and uses OpenAI to draft one inquiry for you to approve. It will not
-                    fetch from a source, or email anyone, until the permission for that
-                    is on the record.
+                    Choose your area, monthly budget and the things you need in a room.
+                    Search the web, see which listing details support a match, and review
+                    an AI-written inquiry before you send it.
                   </p>
                   <div className="lp-actions">
                     <Link className="lp-cta" href="/app">
-                      Open the cockpit
+                      Start your search
                       <ArrowRight size={15} aria-hidden="true" />
                     </Link>
                     <a className="lp-cta-quiet" href="#gate">
-                      Read the refusal
+                      See what gets checked
                     </a>
                   </div>
+                  <p className="lp-sub">Sign in with an email code to search live sources. Coverage varies by location; some results will be links you need to check yourself.</p>
                 </div>
 
                 <div>
                   <div className="lp-specimen">
                     <div className="lp-specimen-head">
-                      <span>Pursuit RP-D01</span>
+                      <span>Fictional example</span>
                       <span>Fit 94</span>
                     </div>
                     <div className="lp-specimen-row">
@@ -117,9 +117,9 @@ export default function Home() {
                       <div className="lp-specimen-copy">
                         <div className="lp-specimen-title">
                           <b>Sunlit room near 27th Main</b>
-                          <span className="lp-tag">Drafted</span>
+                          <span className="lp-tag">Sample</span>
                         </div>
-                        <p className="lp-specimen-place">HSR Layout, private room</p>
+                        <p className="lp-specimen-place">HSR Layout, Bengaluru · Private room</p>
                         <div className="lp-specimen-strip">
                           <span>₹24,500</span>
                           <span>Contact found</span>
@@ -148,14 +148,14 @@ export default function Home() {
                   <div className="lp-notes">
                     <div className="lp-note">
                       <p>
-                        <b>94 is not a vibe.</b> It is four measured factors that add up,
-                        each with the reason it scored what it did.
+                        This fictional room shows how the score breaks down.
+                        It is not an available rental.
                       </p>
                     </div>
                     <div className="lp-note">
                       <p>
-                        <b>Freshness scored 12 of 15.</b> The gap stays visible instead of
-                        being rounded away into a recommendation.
+                        A fit score describes the listing information.
+                        Confirm the price, inclusions and availability with the lister.
                       </p>
                     </div>
                   </div>
@@ -169,57 +169,53 @@ export default function Home() {
           <div className="lp-row">
             <div className="lp-marker" aria-hidden="true">
               <span>Record 01</span>
-              <span>Source policy</span>
+              <span>Listing checks</span>
             </div>
             <div className="lp-body">
-              <h2 className="lp-h2">The first real source said no. That is on the record.</h2>
+              <h2 className="lp-h2">See what the listing says before you contact anyone.</h2>
               <p className="lp-sub">
-                Most tools would have scraped it anyway. RentPilot read the terms, asked
-                for written permission, failed to reach anyone, and stopped. Here is the
-                trail Convex kept, exactly as the product shows it.
+                Search snippets can leave out rent, amenities or availability. RentPilot
+                separates these unverified leads from matches backed by details on a source page.
               </p>
 
               <div className="lp-gate">
                 <div className="lp-gate-head">
-                  <strong>bengaluru.rent</strong>
-                  <span className="lp-stamp">Discovery blocked</span>
+                  <strong>From a search result to a checked match</strong>
+                  <span className="lp-stamp">Source evidence required</span>
                 </div>
                 <ol className="lp-trail">
                   <li>
                     <time>Step 1</time>
                     <p>
-                      Firecrawl fetched the public terms page.
-                      <small>No listings and no private contact details were imported.</small>
+                      Open web leads on their original sites.
+                      <small>A snippet alone does not confirm that a room meets your needs.</small>
                     </p>
                   </li>
                   <li>
                     <time>Step 2</time>
                     <p>
-                      The terms require written permission for automated extraction.
-                      <small>Source recorded as review_required, which blocks every scrape call.</small>
+                      Check details from sources that permit extraction.
+                      <small>Other sources stay as links for you to review manually.</small>
                     </p>
                   </li>
                   <li>
                     <time>Step 3</time>
                     <p>
-                      A permission request was sent from the project inbox.
-                      <small>One human-approved message, not a campaign.</small>
+                      Keep only listings that meet every requirement.
+                      <small>A missing bed, cooler or other must-have keeps a listing out of your matches until the source supports it.</small>
                     </p>
                   </li>
                   <li>
                     <time>Step 4</time>
                     <p>
-                      The recipient mail server was unreachable and AgentMail returned a
-                      delivery failure.
-                      <small>The failure is stored against the source, not swallowed.</small>
+                      Review the recipient and message before sending.
+                      <small>In-app email needs a source-listed address. You can contact other listers through the original site.</small>
                     </p>
                   </li>
                 </ol>
                 <p className="lp-gate-foot">
-                  The source stays gated until a valid contact path grants written
-                  permission. <code>scrapeApprovedListing</code> refuses any source whose
-                  status is not <code>approved</code>, and refuses any URL outside that
-                  source&apos;s own domain.
+                  These checks use published information. RentPilot has not inspected the
+                  property or verified the landlord&apos;s identity. Confirm details before committing to a room.
                 </p>
               </div>
             </div>
@@ -230,13 +226,13 @@ export default function Home() {
           <div className="lp-row">
             <div className="lp-marker" aria-hidden="true">
               <span>Record 02</span>
-              <span>Pursuit rail</span>
+              <span>How it works</span>
             </div>
             <div className="lp-body">
-              <h2 className="lp-h2">Six stages, and a pursuit only moves when something real happened.</h2>
+              <h2 className="lp-h2">Keep the listing and your inquiry together.</h2>
               <p className="lp-sub">
-                The rail in the cockpit is the same sequence. Order matters here, because
-                each stage is gated by the one before it.
+                Follow each match from the details you checked to the message you approved.
+                You decide whom to contact and whether to arrange a visit.
               </p>
               <div className="lp-stages">
                 {stages.map((stage, index) => (
@@ -257,40 +253,38 @@ export default function Home() {
           <div className="lp-row">
             <div className="lp-marker" aria-hidden="true">
               <span>Record 03</span>
-              <span>Explainability</span>
+              <span>Your requirements</span>
             </div>
             <div className="lp-body">
-              <h2 className="lp-h2">A missing detail lowers confidence. It never disappears.</h2>
+              <h2 className="lp-h2">Your budget and must-haves are firm limits.</h2>
               <p className="lp-sub">
-                Scoring is deterministic and runs in Convex, so the same listing and the
-                same brief always produce the same number. There is no model deciding
-                what you should want. When a contact path is missing, the evidence factor
-                drops from 25 to 14, confidence falls from 92 to 76, and the pursuit says
-                so on its face.
+                A listing enters your matches only when the source supports your rent range,
+                chosen area, room type and every must-have. Each match also shows a score
+                breakdown and any missing contact details.
               </p>
               <div className="lp-stack">
                 <div className="lp-stack-item">
                   <strong>Budget</strong>
-                  <span>30 points</span>
+                  <span>Your rent range</span>
                   <p>
-                    Full marks inside your range, half marks within twenty percent of the
-                    ceiling, nothing above that.
+                    Rooms above your maximum monthly rent are excluded from matches.
+                    Unverified web leads may still mention other prices.
                   </p>
                 </div>
                 <div className="lp-stack-item">
                   <strong>Locality</strong>
-                  <span>30 points</span>
+                  <span>Your chosen areas</span>
                   <p>
-                    Matched against the areas you named, not against a popularity score
-                    or a sponsored placement.
+                    The listing must name an area you selected. Distance from a landmark
+                    and commute times are not measured.
                   </p>
                 </div>
                 <div className="lp-stack-item">
-                  <strong>Evidence</strong>
-                  <span>25 points</span>
+                  <strong>Must-haves</strong>
+                  <span>Details in the listing</span>
                   <p>
-                    Rewards a published contact path. Missing fields are listed on the
-                    pursuit so you know what you are deciding without.
+                    Each required amenity needs supporting text from the source.
+                    A room described as furnished does not establish that it has a bed or cooler.
                   </p>
                 </div>
               </div>
@@ -302,36 +296,37 @@ export default function Home() {
           <div className="lp-row">
             <div className="lp-marker" aria-hidden="true">
               <span>Record 04</span>
-              <span>Stack</span>
+              <span>Built with</span>
             </div>
             <div className="lp-body">
-              <h2 className="lp-h2">Three services, each doing one job.</h2>
+              <h2 className="lp-h2">The tools behind your search.</h2>
               <div className="lp-stack">
                 <div className="lp-stack-item">
                   <strong>Convex</strong>
-                  <span>State and rules</span>
+                  <span>Saved searches</span>
                   <p>
-                    Schema, indexed queries and every mutation. Session-scoped so one
-                    browser never reads another visitor&apos;s pursuits, drafts or contacts.
+                    Convex stores your search, matches and drafts. Signing in lets you
+                    return to them from another browser.
                   </p>
                 </div>
                 <div className="lp-stack-item">
                   <strong>Firecrawl</strong>
-                  <span>Permitted discovery</span>
+                  <span>Search and listing details</span>
                   <p>
-                    Structured extraction from approved sources only, over https, with the
-                    host checked against the source that granted permission.
+                    Firecrawl finds web leads and extracts details from approved sources.
+                    Permission to extract does not establish a listing&apos;s accuracy.
                   </p>
                 </div>
                 <div className="lp-stack-item">
                   <strong>AgentMail</strong>
-                  <span>Human-approved send</span>
+                  <span>Email delivery</span>
                   <p>
-                    A durable outbox with an idempotency guard. Delivery state flows back
-                    onto the pursuit, including bounces.
+                    AgentMail sends sign-in codes and the inquiries you approve.
+                    OpenAI writes the inquiry draft for you to review first.
                   </p>
                 </div>
               </div>
+              <p className="lp-sub">For example, bengaluru.rent requires written permission. Our request could not be delivered, so its listings remain blocked from extraction.</p>
             </div>
           </div>
         </section>
@@ -342,23 +337,22 @@ export default function Home() {
               <span>Open</span>
             </div>
             <div className="lp-body">
-              <span className="lp-eyebrow">Live demo workspace</span>
-              <h2 className="lp-h2">Open the cockpit and work a pursuit end to end.</h2>
+              <span className="lp-eyebrow">Start with your requirements</span>
+              <h2 className="lp-h2">Where do you want to live?</h2>
               <p className="lp-sub">
-                The demo workspace is seeded with synthetic listings and labelled as such
-                in the product. Set your own city and the queue empties honestly, because
-                no source has granted permission for it yet.
+                Choose your city, areas and currency, then set your budget and must-haves.
+                Sign in to search live sources. You may find web leads even where we have no
+                approved source for checked matches.
               </p>
               <div className="lp-actions">
                 <Link className="lp-cta" href="/app">
-                  Open the cockpit
+                  Start your search
                   <ArrowRight size={15} aria-hidden="true" />
                 </Link>
               </div>
               <p className="lp-sub" style={{ marginTop: 18, display: "flex", gap: 7 }}>
                 <ShieldCheck size={16} aria-hidden="true" style={{ flex: "0 0 auto", marginTop: 2 }} />
-                Synthetic recipients are never emailed. The server refuses the send, not
-                just the button.
+                Every inquiry needs your confirmation. Fictional sample listings are labelled separately from real rentals.
               </p>
             </div>
           </div>
@@ -368,7 +362,7 @@ export default function Home() {
       <footer className="lp-foot">
         <span>RentPilot, Convex All Gas Hackathon build</span>
         <span>
-          <a href="#gate">Source policy</a> · <Link href="/app">Cockpit</Link>
+          <a href="#gate">Listing checks</a> · <Link href="/app">Start your search</Link>
         </span>
       </footer>
     </div>

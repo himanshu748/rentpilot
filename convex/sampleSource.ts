@@ -21,7 +21,7 @@ export type SampleListing = {
   furnishing: string;
 };
 
-export type SamplePlace = { city: string; area: string };
+export type SamplePlace = { city: string; area: string; country: string; currency: string };
 
 export const sampleListings: SampleListing[] = [
   {
@@ -72,7 +72,8 @@ export function sampleSourceHost() {
 
 const PERMISSION_NOTICE = `RentPilot operates this page and grants automated extraction of the
   listings below. Rent, locality, home type and the contact address may be fetched and stored.
-  These are sample records published for a product demonstration, not live tenancies.`;
+  These are sample records published for a product demonstration, not live tenancies.
+  Amounts are illustrative fixtures, not local market prices or currency conversions.`;
 
 const shell = (title: string, inner: string) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -108,6 +109,8 @@ export function listingUrl(origin: string, slug: string, place: SamplePlace) {
   const url = new URL(`${origin}/sample-source/listing/${slug}`);
   url.searchParams.set("city", place.city);
   url.searchParams.set("area", place.area);
+  url.searchParams.set("country", place.country);
+  url.searchParams.set("currency", place.currency);
   return url.toString();
 }
 
@@ -116,13 +119,13 @@ export function renderIndex(origin: string, place: SamplePlace) {
     .map(
       (listing) => `<article>
         <h2><a href="${escapeHtml(listingUrl(origin, listing.slug, place))}">${listing.title}</a></h2>
-        <p>${escapeHtml(place.area)} &middot; ${listing.bedrooms} &middot; Rs ${listing.rent} per month</p>
+        <p>${escapeHtml(place.area)} &middot; ${listing.bedrooms} &middot; ${escapeHtml(place.currency)} ${listing.rent} per month</p>
       </article>`,
     )
     .join("");
   return shell(
     "RentPilot sample rental source",
-    `<h1>Sample rooms in ${escapeHtml(place.area)}, ${escapeHtml(place.city)}</h1>
+    `<h1>Sample rooms in ${escapeHtml(place.area)}, ${escapeHtml(place.city)}, ${escapeHtml(place.country)}</h1>
      <p class="permission">${PERMISSION_NOTICE}</p>
      ${rows}
      <footer>Published by RentPilot for the Convex All Gas Hackathon demonstration.</footer>`,
@@ -136,10 +139,13 @@ export function renderListing(listing: SampleListing, place: SamplePlace) {
     `<h1>${listing.title} in ${escapeHtml(place.area)}</h1>
      <p class="permission">${PERMISSION_NOTICE}</p>
      <dl>
-       <dt>Monthly rent</dt><dd>Rs ${listing.rent}</dd>
+       <dt>Monthly rent</dt><dd>${escapeHtml(place.currency)} ${listing.rent} per month</dd>
+       <dt>City</dt><dd>${escapeHtml(place.city)}</dd>
+       <dt>Country</dt><dd>${escapeHtml(place.country)}</dd>
+       <dt>Currency</dt><dd>${escapeHtml(place.currency)}</dd>
        <dt>Locality</dt><dd>${escapeHtml(place.area)}, ${escapeHtml(place.city)}</dd>
        <dt>Home type</dt><dd>${listing.bedrooms}</dd>
-       <dt>Deposit</dt><dd>Rs ${listing.deposit}</dd>
+       <dt>Deposit</dt><dd>${escapeHtml(place.currency)} ${listing.deposit}</dd>
        <dt>Furnishing</dt><dd>${listing.furnishing}</dd>
        <dt>Available</dt><dd>${listing.available}</dd>
        <dt>Contact email</dt><dd>${email ? escapeHtml(email) : "Not published"}</dd>

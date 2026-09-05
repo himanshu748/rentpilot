@@ -11,6 +11,7 @@ import {
 import { reserveIntegrationUse } from "./rateLimits";
 import { assertListingInSession, requireUserKey } from "./session";
 import { sendStatus } from "./schema";
+import { eligibilityProblems } from "./eligibility";
 
 const agentmail = new AgentMail(components.agentmail);
 
@@ -40,6 +41,8 @@ export const sendApprovedDraft = mutation({
     if (thread.sendStatus !== "ready") {
       throw new Error("Save and approve the draft before sending.");
     }
+    const criteria = await ctx.db.query("criteria").withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner)).order("desc").first();
+    if (!criteria || eligibilityProblems(listing, criteria).length) throw new Error("This listing no longer meets your current search requirements. No email was sent.");
     if (!thread.draftedByModel) {
       throw new Error("This inquiry must be generated with OpenAI before it can be sent.");
     }
@@ -172,7 +175,7 @@ function readString(source: unknown, key: string) {
  * never copied into the public shared activity feed.
  */
 export const onReplyReceived = internalMutation({
-  args: { message: v.any(), thread: v.any(), eventId: v.string() },
+  args: { message: v.any(), thread: v.any(), eventId: v.string(), attempt: v.optional(v.number()) },
   returns: v.null(),
   handler: async (ctx, args) => {
     const handled = await ctx.db
@@ -180,11 +183,6 @@ export const onReplyReceived = internalMutation({
       .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
       .unique();
     if (handled) return null;
-    await ctx.db.insert("agentmailEvents", {
-      eventId: args.eventId,
-      createdAt: Date.now(),
-    });
-
     const agentMailThreadId =
       readString(args.message, "thread_id") ?? readString(args.thread, "thread_id");
     const from = readString(args.message, "from") ?? "the landlord";
@@ -202,17 +200,31 @@ export const onReplyReceived = internalMutation({
       : null;
 
     if (!thread) {
+      // The outbound receipt can arrive after a fast reply. Allow the bounded
+      // captureThreadRef poll to finish before treating this as unrelated mail.
+      const attempt = args.attempt ?? 0;
+      if (agentMailThreadId && attempt < 6) {
+        await ctx.scheduler.runAfter(60_000, internal.email.onReplyReceived, {
+          ...args,
+          attempt: attempt + 1,
+        });
+      } else {
+        await ctx.db.insert("agentmailEvents", { eventId: args.eventId, createdAt: Date.now() });
+      }
       return null;
     }
 
+    await ctx.db.insert("agentmailEvents", { eventId: args.eventId, createdAt: Date.now() });
     const listing = await ctx.db.get(thread.listingId);
+    // Never leak a reply into shared activity if its owned listing was removed.
+    if (!listing?.sessionId) return null;
     await ctx.db.patch(thread._id, {
       lastReplySummary: summary || null,
       lastReplyIntent: "received",
       lastReplyFrom: from,
       lastReplyAt: Date.now(),
     });
-    if (listing && listing.status !== "viewing" && listing.status !== "closed") {
+    if (listing.status !== "viewing" && listing.status !== "closed") {
       await ctx.db.patch(listing._id, { status: "replied" });
     }
     await ctx.db.insert("activity", {

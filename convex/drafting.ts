@@ -2,15 +2,15 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery } from "./_generated/server";
 import { isListingInSession, requireUserKey } from "./session";
+import { INQUIRY_MODEL, INQUIRY_URL } from "./aiConfig";
+import { sameMarket } from "./location";
+import { eligibilityProblems } from "./eligibility";
 
 /**
  * OpenAI writes the inquiry, never the ranking. Scores stay deterministic in
  * Convex so the same listing and brief always produce the same number; the
  * model only turns that evidence into a message a human then edits and approves.
  */
-
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_MODEL = "gpt-4o-mini";
 
 const draftContext = v.union(
   v.object({
@@ -20,6 +20,8 @@ const draftContext = v.union(
     rent: v.number(),
     bedrooms: v.string(),
     city: v.string(),
+    country: v.string(),
+    currency: v.string(),
     missingFields: v.array(v.string()),
     mustHaves: v.array(v.string()),
     budgetMax: v.number(),
@@ -50,6 +52,8 @@ export const getDraftContext = internalQuery({
       .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.owner))
       .order("desc")
       .first();
+    if (!criteria || !sameMarket(listing, criteria)) throw new Error("Switch back to this pursuit's location and currency before drafting.");
+    if (eligibilityProblems(listing, criteria).length) throw new Error("This listing no longer meets your current requirements. Review your brief before drafting.");
 
     return {
       threadId: thread._id,
@@ -58,6 +62,8 @@ export const getDraftContext = internalQuery({
       rent: listing.rent,
       bedrooms: listing.bedrooms,
       city: listing.city ?? criteria?.city ?? "your city",
+      country: listing.country ?? "India",
+      currency: listing.currency ?? "INR",
       missingFields: listing.missingFields,
       mustHaves: criteria?.mustHaves ?? [],
       budgetMax: criteria?.budgetMax ?? 0,
@@ -128,13 +134,13 @@ export const writeInquiry = action({
       throw new Error("This inquiry has already been sent and can no longer be rewritten.");
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.AI_GATEWAY_API_KEY;
     if (!apiKey) {
       throw new Error(
-        "OpenAI is not configured. Set OPENAI_API_KEY with: npx convex env set OPENAI_API_KEY sk-...",
+        "OpenAI drafting is not configured. Set AI_GATEWAY_API_KEY on the Convex deployment.",
       );
     }
-    const model = process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
+    const model = INQUIRY_MODEL;
 
     const tone =
       args.tone === "brief"
@@ -145,10 +151,10 @@ export const writeInquiry = action({
 
     const facts = [
       `Listing: ${context.title}`,
-      `Area: ${context.locality}, ${context.city}`,
+      `Area: ${context.locality}, ${context.city}, ${context.country}`,
       `Type: ${context.bedrooms}`,
-      `Advertised rent: INR ${context.rent} per month`,
-      context.budgetMax > 0 ? `Renter's ceiling: INR ${context.budgetMax} per month` : null,
+      `Advertised rent: ${context.currency} ${context.rent} per month`,
+      context.budgetMax > 0 ? `Renter's ceiling: ${context.currency} ${context.budgetMax} per month` : null,
       context.mustHaves.length > 0
         ? `Renter's requirements: ${context.mustHaves.join(", ")}`
         : null,
@@ -161,7 +167,7 @@ export const writeInquiry = action({
       .filter(Boolean)
       .join("\n");
 
-    const response = await fetch(OPENAI_URL, {
+    const response = await fetch(INQUIRY_URL, {
       method: "POST",
       signal: AbortSignal.timeout(20_000),
       headers: {
@@ -170,6 +176,7 @@ export const writeInquiry = action({
       },
       body: JSON.stringify({
         model,
+        providerOptions: { gateway: { only: ["openai"] } },
         temperature: 0.4,
         max_tokens: 400,
         response_format: { type: "json_object" },
@@ -196,21 +203,30 @@ export const writeInquiry = action({
     });
 
     if (!response.ok) {
-      const detail = await response.text();
+      // Do not return upstream response bodies: they may contain request details.
       throw new Error(
-        `OpenAI rejected the request (${response.status}). ${detail.slice(0, 200)}`,
+        response.status === 402 || response.status === 429
+          ? "OpenAI drafting is unavailable because the gateway credit, budget, or rate limit was reached. No replacement draft was generated."
+          : `OpenAI drafting failed (${response.status}). Please try again. No replacement draft was generated.`,
       );
     }
 
     const payload = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: { finish_reason?: string; message?: { content?: string; refusal?: string } }[];
     };
+    if (payload.choices?.[0]?.message?.refusal || payload.choices?.[0]?.finish_reason !== "stop") {
+      throw new Error("OpenAI did not complete the draft. Please try again.");
+    }
     const raw = payload.choices?.[0]?.message?.content;
     if (!raw) throw new Error("OpenAI returned an empty draft.");
 
     let parsed: { subject?: unknown; body?: unknown };
     try {
-      parsed = JSON.parse(raw) as { subject?: unknown; body?: unknown };
+      const value: unknown = JSON.parse(raw);
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error("Expected a draft object.");
+      }
+      parsed = value as { subject?: unknown; body?: unknown };
     } catch {
       throw new Error("OpenAI returned a draft that was not valid JSON.");
     }

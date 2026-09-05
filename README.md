@@ -4,26 +4,33 @@ RentPilot turns scattered room listings into traceable pursuits. Each pursuit ke
 
 This repository is the working Convex All Gas Hackathon build.
 
+**Live app:** [https://ceaseless-pigeon-981.convex.site](https://ceaseless-pigeon-981.convex.site)
+
+**Hackathon build log:** [hackathon.md](./hackathon.md)
+
 ## What works
 
-- Anonymous by default, with optional sign-in: AgentMail emails a six digit code, and signing in claims everything the anonymous session created onto the account
+- Visitors can set preferences anonymously. Live searches, AI drafts and inquiry sends require sign-in with an AgentMail email code; signing in claims the anonymous search onto the account.
 - Server-derived ownership: a signed-in request ignores any client-supplied session id, so one account cannot read another's pursuits by guessing a key
-- Landing page at `/` that states the product, the six pursuit stages and the recorded source-policy refusal
+- Landing page at `/` that explains the search, listing checks, sign-in requirement and fictional example
 - Geist Sans and Geist Mono self-hosted through `next/font`, matching the brand system
 - Responsive pursuit cockpit at `/app` with desktop, tablet and phone compositions
 - Session-persistent search briefs for any city, preferred areas, budget, home types and must-haves without requiring account setup
 - City-scoped pursuit queues and source readiness, with an honest empty state when a city has no approved source yet
+- Live Firecrawl web search from the saved brief, with source links labelled as unverified leads. Search does not scrape unapproved pages; only registry-approved sources enter the extraction pipeline.
+- Hard monthly budget, selected locality and room-type gates. Every must-have needs a source quotation; unknown amenities do not become matches. Existing pursuits are checked again when the brief changes, including before drafting or sending.
+- Locality matching is by the named neighbourhood, not a measured distance radius. Search snippets do not establish availability, amenities, or final costs.
 - Convex schema with bounded indexed queries for sources, criteria, listings, threads, activity and validation runs
-- Session-isolated reads and writes: a browser session sees its own pursuits plus the shared demo workspace, never another session's
-- Live Convex demo dataset, labeled as synthetic and read-only in the product, with skeleton rows while the first query resolves
+- Session-isolated reads and writes: a browser session sees its own matching pursuits, never another session's or an unrelated shared demo queue
+- Explicitly fictional sample-source sweeps remain available for integration testing and use the same hard filters as live listings
 - Explainable ranking with confidence and missing-evidence penalties, computed in Convex and never by a model
-- OpenAI drafts the inquiry from the listing evidence and your must-haves, grounded so it cannot invent move-in dates or personal details, and always left for you to edit and approve
+- OpenAI drafts from the listing evidence and your must-haves, with instructions against inventing personal details. Review and approval remain required because model output can be wrong.
 - Human-editable inquiry drafts saved through Convex mutations, locked once an inquiry has been sent
 - AgentMail component, durable send boundary, stable per-draft idempotency key, two-step human confirmation, live delivery status folded back into the pursuit thread and a webhook route
 - Anime.js transitions for pursuit entry and state progress, deferred until the tab is visible and skipped under reduced motion
 - Honest credential gates for Firecrawl discovery and AgentMail delivery
 - Signed-in, server-derived ownership and hourly account limits around paid Firecrawl, OpenAI and AgentMail calls
-- Idempotent AgentMail reply ingestion, with the reply sender, timestamp and summary shown on the pursuit
+- AgentMail reply-ingestion code stores the sender, timestamp and summary on the owned match, deduplicates events, and retries replies that arrive before the outbound thread reference. Production webhook registration and the full in-app reply loop remain unverified.
 - Keyboard-complete: skip link, focus-visible rings, Escape and focus return on the mobile evidence dialog
 
 ## Local setup
@@ -42,6 +49,24 @@ npx convex run seed:demo
 
 Open `http://localhost:3000` for the landing page, or go straight to the product at
 `http://localhost:3000/app`.
+
+## Production deployment
+
+The frontend is statically exported and published through the Convex static-hosting
+component, so the judged app and its backend routes share the required `convex.site` host.
+
+```bash
+npm run deploy
+```
+
+The static-hosting deploy command builds with the production Convex URL, deploys the
+Convex backend, and uploads the generated `out/` bundle in one flow.
+
+The public production app is:
+
+```text
+https://ceaseless-pigeon-981.convex.site
+```
 
 ## Routes
 
@@ -64,21 +89,37 @@ npx convex env set AGENTMAIL_WEBHOOK_SECRET your_webhook_secret
 AgentMail also carries the sign-in codes, so no separate email provider is needed.
 Until `AGENTMAIL_API_KEY` is set, sign-in reports that it cannot send a code.
 
+The app explicitly forwards `AGENTMAIL_API_KEY` into the isolated AgentMail
+component. `patch-package` applies the environment-declaration compatibility fix
+for `@agentmail/convex@0.1.0` on install; keep the `patches/` directory and run
+install scripts when deploying. Sign-in waits for a provider message receipt;
+queued, failed, and unconfirmed sends do not advance to code entry.
+
 Register the AgentMail webhook at:
 
 ```text
 https://your-deployment.convex.site/agentmail/webhook
 ```
 
-OpenAI writes the inquiry drafts. Ranking stays deterministic in Convex, so the model
+The deployed sender uses a least-privilege inbox-scoped key. That key cannot create
+webhooks, so production `message.received` webhook registration remains a pre-submission
+task; see the honest status in [hackathon.md](./hackathon.md).
+
+OpenAI writes the inquiry drafts through Vercel AI Gateway. Ranking stays deterministic in Convex, so the model
 never decides which room is best, only how to ask about it.
 
 ```bash
-npx convex env set OPENAI_API_KEY your_openai_key
-npx convex env set OPENAI_MODEL gpt-4o-mini   # optional, this is the default
+npx convex env set AI_GATEWAY_API_KEY
+# Repeat with --prod for the production deployment; never use NEXT_PUBLIC_ for this key.
 ```
 
-There is no canned or manual fallback for live inquiries. Until `OPENAI_API_KEY` is set,
+The model is pinned to `openai/gpt-4o-mini`, with a gateway provider allowlist containing
+only `openai`. There is no model or provider fallback. Vercel is only the inference
+gateway; the frontend and backend remain hosted on Convex. The current key has a $1
+non-renewing usage budget. Free-credit eligibility, remaining balance, and rate limits
+are managed by Vercel; exhausted limits produce an explicit error, never a substitute draft.
+
+There is no canned or manual fallback for live inquiries. Until `AI_GATEWAY_API_KEY` is set,
 the "Write with OpenAI" control stays disabled, and the server refuses to approve or send
 any live thread that does not carry model provenance written by the OpenAI action.
 
@@ -86,13 +127,25 @@ Firecrawl is authenticated locally and its key is configured on the Convex deplo
 server-side connectivity probe (`npx convex run discovery:probeFirecrawl`) returns a live
 status code and page title.
 
+## Worldwide search briefs
+
+New visitors choose their own country/region, city, neighbourhoods, and ISO currency;
+they are not assigned a Bengaluru search. Amounts remain in the chosen currency, with
+no implicit conversion. A listing must provide matching city/country/currency evidence
+and an explicitly monthly price before ranking. Weekly prices currently require review.
+Changing location or currency hides pursuits from the previous search without deleting them.
+Existing India/INR records remain compatible.
+
+Worldwide briefs are not worldwide inventory: live homes still require permitted local
+sources. The UI labels the built-in sweep as a sample demonstration, not a live-home search.
+
 ## The sample source
 
 Discovery needs a source that permits it. This deployment publishes its own, at
 `/sample-source` on the same `convex.site` host, and grants automated extraction in writing
 on the page. It is a fixture, not a claim that an outside portal gave permission, and every
-page says so. The listings follow whatever city and areas are in your brief, so the sweep
-works for any place you choose.
+page says so. The listings follow the city, country, areas, and currency in your brief.
+Their amounts are illustrative fixtures, not local market prices or converted rents.
 
 The sweep runs through the same permission and host checks as any other source, which is why
 it only works against a deployed backend: Firecrawl cannot reach a local Convex backend, and
@@ -105,10 +158,23 @@ Do not scrape a source before its policy status is recorded as approved.
 ## Verification
 
 ```bash
+npm test
 npm run build
 npm run lint
 npx tsc --noEmit
 ```
+
+The 54 automated tests cover location and currency isolation, hard budget and amenity
+gates, OpenAI request/response handling without fallback, sign-in delivery receipts,
+review-before-send UI behavior, and reply matching/idempotency. These use stubs at
+external-service boundaries and do not replace a live end-to-end integration test.
+
+The deployed first-visitor flow was checked at 1280, 768 and 375 pixel widths in an
+isolated Comet session: landing page, app navigation, preference validation and the
+sign-in dialog passed without console errors. Previous controlled tests confirmed
+email-code sign-in and mail delivery in both directions. The complete signed-in
+listing-to-draft-to-send-to-in-app-reply flow still needs to pass before the video
+claims it works end to end.
 
 Run `npm run build` first. Next generates the route types that `layout.tsx` depends on into `.next/types`, so on a clean checkout `npx tsc --noEmit` fails until a build or `npm run dev` has created them.
 

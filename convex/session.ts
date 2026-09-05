@@ -16,7 +16,7 @@ export async function ownerKey(
   anonymousSessionId: string | undefined,
 ) {
   const userId = await getAuthUserId(ctx);
-  return userId ? userKey(userId) : anonymousSessionId;
+  return userId ? userKey(userId) : anonymousSessionId && isAnonymousSessionId(anonymousSessionId) ? anonymousSessionId : undefined;
 }
 
 export function userKey(userId: Id<"users">) {

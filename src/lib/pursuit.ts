@@ -19,6 +19,7 @@ export type Pursuit = {
   title: string;
   locality: string;
   rent: number;
+  currency: string;
   kind: string;
   score: number;
   confidence: number;
@@ -29,6 +30,7 @@ export type Pursuit = {
   seen: string;
   contact: string | null;
   missing: string[];
+  amenityEvidence?: { requirement: string; status: string; quote: string }[];
   scoreBreakdown: { label: string; score: number; max: number; note: string }[];
   draftSubject: string;
   draftBody: string;

@@ -48,12 +48,15 @@ import {
 import { SignInDialog } from "@/components/sign-in-dialog";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
+import { currencies, formatMoney, validCurrency } from "../../convex/location";
 
 const COMPACT_QUERY = "(max-width: 1050px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 type SearchCriteria = {
   city: string;
+  country: string;
+  currency: string;
   budgetMin: number;
   budgetMax: number;
   localities: string[];
@@ -64,12 +67,14 @@ type SearchCriteria = {
 };
 
 const defaultCriteria: SearchCriteria = {
-  city: "Bengaluru",
-  budgetMin: 18000,
-  budgetMax: 32000,
-  localities: ["HSR Layout", "Koramangala", "Indiranagar"],
-  bedrooms: ["Private room", "1 BHK"],
-  mustHaves: ["No brokerage", "Move-in before 15 Sep"],
+  city: "",
+  country: "",
+  currency: "USD",
+  budgetMin: 0,
+  budgetMax: 0,
+  localities: [],
+  bedrooms: ["Private room"],
+  mustHaves: [],
   contactName: "",
   contactEmail: null,
 };
@@ -79,7 +84,7 @@ function isEmailish(value: string) {
   return /^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(value);
 }
 
-const homeTypes = ["Private room", "1 BHK", "2 BHK", "Shared room"];
+const homeTypes = ["Private room", "Studio", "1 bedroom", "2 bedrooms", "Shared room", "1 BHK", "2 BHK"];
 
 function useMediaQuery(queryString: string) {
   const subscribe = useCallback(
@@ -135,18 +140,6 @@ function splitValues(value: string) {
   return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
 }
 
-function compactCurrency(value: number) {
-  return `₹${new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value)}`;
-}
-
-function formatRent(rent: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(rent);
-}
-
 function CriteriaDialog({
   open,
   onOpenChange,
@@ -159,6 +152,8 @@ function CriteriaDialog({
   onSave: (criteria: SearchCriteria) => Promise<void>;
 }) {
   const [city, setCity] = useState(criteria.city);
+  const [country, setCountry] = useState(criteria.country);
+  const [currency, setCurrency] = useState(criteria.currency);
   const [areas, setAreas] = useState(criteria.localities.join(", "));
   const [budgetMin, setBudgetMin] = useState(String(criteria.budgetMin));
   const [budgetMax, setBudgetMax] = useState(String(criteria.budgetMax));
@@ -179,6 +174,8 @@ function CriteriaDialog({
     const parsedMax = Number(budgetMax.replace(/,/g, ""));
     const nextErrors: Record<string, string> = {};
     if (city.trim().length < 2) nextErrors.city = "Enter the city you want to search.";
+    if (country.trim().length < 2) nextErrors.country = "Enter the country or region for this city.";
+    if (!validCurrency(currency)) nextErrors.currency = "Choose a currency.";
     if (splitValues(areas).length === 0) nextErrors.areas = "Add at least one preferred area.";
     if (!Number.isFinite(parsedMin) || !Number.isFinite(parsedMax) || parsedMin < 0 || parsedMax <= parsedMin) {
       nextErrors.budget = "Set a maximum budget higher than the minimum.";
@@ -188,12 +185,18 @@ function CriteriaDialog({
       nextErrors.contactEmail = "Enter an address a landlord could reply to.";
     }
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      const field = Object.keys(nextErrors)[0];
+      document.getElementById(`criteria-${field === "budget" ? "budget-max" : field}`)?.focus();
+      return;
+    }
 
     setSaving(true);
     try {
       await onSave({
         city: city.trim(),
+        country: country.trim(),
+        currency,
         budgetMin: parsedMin,
         budgetMax: parsedMax,
         localities: splitValues(areas),
@@ -218,32 +221,44 @@ function CriteriaDialog({
         <Dialog.Content className="criteria-dialog-content" aria-modal="true" aria-describedby="criteria-dialog-description">
           <div className="criteria-dialog-head">
             <div>
-              <span className="eyebrow">Personal search profile</span>
-              <Dialog.Title>Choose your city and areas</Dialog.Title>
-              <Dialog.Description id="criteria-dialog-description">RentPilot will rank permitted listings against this brief.</Dialog.Description>
+              <span className="eyebrow">Search preferences</span>
+              <Dialog.Title>Where do you want to live?</Dialog.Title>
+              <Dialog.Description id="criteria-dialog-description">Set your area, budget and must-haves. Sign in after saving to search live sources. Coverage varies by location.</Dialog.Description>
             </div>
             <Dialog.Close className="icon-button" aria-label="Close search preferences"><X size={18} /></Dialog.Close>
           </div>
           <form className="criteria-form" onSubmit={submit} aria-busy={saving}>
             {errors.form && <div className="form-error" role="alert"><CircleAlert size={15} />{errors.form}</div>}
             <div className="criteria-form-grid">
+              <label className="form-field" htmlFor="criteria-country">
+                <span>Country or region (required)</span>
+                <input id="criteria-country" value={country} onChange={(event) => setCountry(event.target.value)} autoComplete="country-name" maxLength={80} spellCheck={false} aria-invalid={Boolean(errors.country)} aria-describedby={errors.country ? "criteria-country-error" : undefined} placeholder="United Kingdom" />
+                {errors.country && <small id="criteria-country-error" className="field-error">{errors.country}</small>}
+              </label>
               <label className="form-field" htmlFor="criteria-city">
-                <span>City</span>
-                <input id="criteria-city" value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" spellCheck={false} aria-invalid={Boolean(errors.city)} aria-describedby={errors.city ? "criteria-city-error" : undefined} placeholder="Pune" />
+                <span>City (required)</span>
+                <input id="criteria-city" value={city} onChange={(event) => setCity(event.target.value)} maxLength={60} autoComplete="address-level2" spellCheck={false} aria-invalid={Boolean(errors.city)} aria-describedby={errors.city ? "criteria-city-error" : undefined} placeholder="London, Nairobi, Tokyo…" />
                 {errors.city && <small id="criteria-city-error" className="field-error">{errors.city}</small>}
               </label>
               <label className="form-field form-field-wide" htmlFor="criteria-areas">
-                <span>Preferred areas</span>
-                <input id="criteria-areas" value={areas} onChange={(event) => setAreas(event.target.value)} autoComplete="address-level3" spellCheck={false} aria-invalid={Boolean(errors.areas)} aria-describedby={errors.areas ? "criteria-areas-error" : "criteria-areas-hint"} placeholder="Baner, Kothrud, Viman Nagar" />
+                <span>Preferred areas (required)</span>
+                <input id="criteria-areas" value={areas} onChange={(event) => setAreas(event.target.value)} autoComplete="address-level3" spellCheck={false} aria-invalid={Boolean(errors.areas)} aria-describedby={errors.areas ? "criteria-areas-error" : "criteria-areas-hint"} placeholder="Camden, Islington" />
                 {errors.areas ? <small id="criteria-areas-error" className="field-error">{errors.areas}</small> : <small id="criteria-areas-hint">Separate areas with commas.</small>}
+              </label>
+              <label className="form-field form-field-wide" htmlFor="criteria-currency">
+                <span>Rent currency (required)</span>
+                <select id="criteria-currency" value={currency} onChange={(event) => setCurrency(event.target.value)} aria-describedby="criteria-currency-hint">
+                  {currencies.map((code) => <option key={code} value={code}>{code}</option>)}
+                </select>
+                <small id="criteria-currency-hint">Enter monthly amounts in this currency. Changing currency does not convert your budget.</small>
               </label>
               <label className="form-field" htmlFor="criteria-budget-min">
                 <span>Minimum monthly rent</span>
-                <div className="money-input"><span>₹</span><input id="criteria-budget-min" value={budgetMin} onChange={(event) => setBudgetMin(event.target.value)} inputMode="numeric" autoComplete="off" spellCheck={false} aria-invalid={Boolean(errors.budget)} aria-describedby={errors.budget ? "criteria-budget-error" : undefined} /></div>
+                <div className="money-input"><span>{currency}</span><input id="criteria-budget-min" value={budgetMin} onChange={(event) => setBudgetMin(event.target.value)} inputMode="decimal" autoComplete="off" spellCheck={false} aria-invalid={Boolean(errors.budget)} aria-describedby={errors.budget ? "criteria-budget-error" : undefined} /></div>
               </label>
               <label className="form-field" htmlFor="criteria-budget-max">
                 <span>Maximum monthly rent</span>
-                <div className="money-input"><span>₹</span><input id="criteria-budget-max" value={budgetMax} onChange={(event) => setBudgetMax(event.target.value)} inputMode="numeric" autoComplete="off" spellCheck={false} aria-invalid={Boolean(errors.budget)} aria-describedby={errors.budget ? "criteria-budget-error" : undefined} /></div>
+                <div className="money-input"><span>{currency}</span><input id="criteria-budget-max" value={budgetMax} onChange={(event) => setBudgetMax(event.target.value)} inputMode="decimal" autoComplete="off" spellCheck={false} aria-invalid={Boolean(errors.budget)} aria-describedby={errors.budget ? "criteria-budget-error" : undefined} /></div>
                 {errors.budget && <small id="criteria-budget-error" className="field-error">{errors.budget}</small>}
               </label>
             </div>
@@ -261,13 +276,13 @@ function CriteriaDialog({
             </fieldset>
             <label className="form-field" htmlFor="criteria-must-haves">
               <span>Must-haves <small>optional</small></span>
-              <input id="criteria-must-haves" value={mustHaves} onChange={(event) => setMustHaves(event.target.value)} autoComplete="off" placeholder="No brokerage, furnished, near metro" />
-              <small>These improve ranking and explain why a pursuit fits.</small>
+              <input id="criteria-must-haves" value={mustHaves} onChange={(event) => setMustHaves(event.target.value)} autoComplete="off" placeholder="Bed, cooler, cooking cylinder" />
+              <small>Separate with commas. Every must-have needs explicit listing evidence; missing details do not count as a match.</small>
             </label>
             <div className="criteria-form-grid">
               <label className="form-field" htmlFor="criteria-contact-name">
                 <span>Your name <small>optional</small></span>
-                <input id="criteria-contact-name" value={contactName} onChange={(event) => setContactName(event.target.value)} autoComplete="name" placeholder="Himanshu" />
+                <input id="criteria-contact-name" value={contactName} onChange={(event) => setContactName(event.target.value)} autoComplete="name" placeholder="Your name" />
               </label>
               <label className="form-field" htmlFor="criteria-contact-email">
                 <span>Your reply address <small>optional</small></span>
@@ -277,7 +292,7 @@ function CriteriaDialog({
             </div>
             <div className="criteria-form-actions">
               <Dialog.Close className="secondary-action" type="button">Cancel</Dialog.Close>
-              <button className="primary-action" type="submit" disabled={saving}>{saving ? "Saving brief…" : "Save search brief"}</button>
+              <button className="primary-action" type="submit" disabled={saving}>{saving ? "Saving preferences…" : "Save preferences"}</button>
             </div>
           </form>
         </Dialog.Content>
@@ -313,7 +328,7 @@ function PursuitRow({ pursuit, selected, onSelect }: { pursuit: Pursuit; selecte
           <span className="pursuit-title-line"><span className="pursuit-title">{pursuit.title}</span><StatusTag status={pursuit.status} /></span>
           <span className="pursuit-place"><MapPin size={13} aria-hidden="true" />{pursuit.locality} <span aria-hidden="true">·</span> {pursuit.kind}</span>
           <span className="evidence-strip">
-            <span>{formatRent(pursuit.rent)}</span>
+            <span>{formatMoney(pursuit.rent, pursuit.currency)}</span>
             <span>{pursuit.contact ? "Contact found" : "Contact missing"}</span>
             <span>Seen {pursuit.seen}</span>
           </span>
@@ -365,7 +380,7 @@ function ProgressRail({ status }: { status: PursuitStatus }) {
       className={cn("progress-rail", isClosed && "is-closed")}
       ref={railRef}
       role="group"
-      aria-label={`Pursuit stage: ${statusLabels[status]}`}
+      aria-label={`Inquiry stage: ${statusLabels[status]}`}
     >
       {statusOrder.map((item, index) => (
         <div className="rail-step" key={item}>
@@ -379,8 +394,8 @@ function ProgressRail({ status }: { status: PursuitStatus }) {
 }
 
 const deliveryCopy: Record<SendStatus, string> = {
-  draft: "Save the draft before approving delivery.",
-  ready: "Your click is the final human approval for this email.",
+  draft: "Review & send saves your edits first. Nothing is sent until you confirm.",
+  ready: "Review the recipient and message, then confirm once to send.",
   sending: "Handed to AgentMail. Delivery status updates here.",
   sent: "AgentMail confirmed this inquiry left the outbox.",
   failed: "AgentMail could not deliver this inquiry.",
@@ -410,6 +425,7 @@ function EvidencePanel({
   const [sending, setSending] = useState(false);
   const [writing, setWriting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [inquiryError, setInquiryError] = useState<string | null>(null);
   const [subject, setSubject] = useState(pursuit.draftSubject);
   const [body, setBody] = useState(pursuit.draftBody);
   const [draftedByModel, setDraftedByModel] = useState(pursuit.draftedByModel);
@@ -434,6 +450,8 @@ function EvidencePanel({
     pursuit.threadId &&
     pursuit.contact &&
     hasModelDraft &&
+    hasDraftContent &&
+    !editing &&
     sendState === "ready" &&
     !pursuit.isDemo,
   );
@@ -455,13 +473,9 @@ function EvidencePanel({
     });
   }, [delivery, pursuit, onSyncDelivery]);
 
-  useEffect(() => {
-    if (!confirming) return;
-    const timer = window.setTimeout(() => setConfirming(false), 8000);
-    return () => window.clearTimeout(timer);
-  }, [confirming]);
-
   async function writeDraft() {
+    setConfirming(false);
+    setInquiryError(null);
     setWriting(true);
     try {
       const written = await onWriteDraft(pursuit);
@@ -471,40 +485,39 @@ function EvidencePanel({
       setEditing(true);
       toast.success(`${written.model} wrote a draft. Read it before you approve it.`);
     } catch (error) {
-      toast.error(readableError(error, "OpenAI could not write this draft."));
+      setInquiryError(readableError(error, "OpenAI could not write this draft. Try writing it again."));
     } finally {
       setWriting(false);
     }
   }
 
-  async function saveDraft() {
-    if (!canSave) return toast.error("Generate the inquiry with OpenAI, then add a recipient and review the draft.");
+  async function saveDraft(review = false) {
+    if (!canSave || saving || writing || sending) return;
+    setInquiryError(null);
     setSaving(true);
     try {
       await onSaveDraft(pursuit, subject, body);
       setEditing(false);
-      toast.success("Draft saved in Convex and ready for approval");
+      setConfirming(review);
+      if (!review) toast.success("Draft saved. No email sent.");
     } catch (error) {
-      toast.error(readableError(error, "Could not save this draft."));
+      setInquiryError(readableError(error, "Could not save this draft. Your edits are still here; try again."));
     } finally {
       setSaving(false);
     }
   }
 
   async function sendDraft() {
-    if (!canSend) return;
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
+    if (!canSend || !confirming || sending || saving || writing) return;
     setConfirming(false);
+    setInquiryError(null);
     setSending(true);
     try {
       requestIdRef.current ??= crypto.randomUUID();
       await onSend(pursuit, requestIdRef.current);
       toast.success("Approved inquiry queued with AgentMail");
     } catch (error) {
-      toast.error(readableError(error, "AgentMail could not queue this inquiry."));
+      setInquiryError(readableError(error, "AgentMail could not queue this inquiry. Review the delivery status before retrying."));
     } finally {
       setSending(false);
     }
@@ -519,11 +532,13 @@ function EvidencePanel({
     : !hasModelDraft && !openaiConfigured
       ? "OpenAI is required. Add its deployment key to generate this inquiry."
       : !hasModelDraft
-        ? "Generate the grounded OpenAI draft before review and delivery."
+        ? "Choose Draft inquiry to write a message from the listing details."
+    : !pursuit.contact
+      ? "No recipient email was found in the source. Open the original listing to contact the lister there; RentPilot will not guess an address."
     : !agentmailConfigured
       ? "AgentMail is waiting for its deployment key."
       : confirming
-        ? `This sends a real email to ${pursuit.contact}. Click again to confirm.`
+        ? "Confirming sends this exact saved message through RentPilot’s AgentMail inbox, not your Gmail account."
         : deliveryCopy[sendState];
 
   return (
@@ -535,7 +550,7 @@ function EvidencePanel({
         </div>
       )}
       <div className="evidence-head">
-        <div><span className="eyebrow">Selected pursuit</span>{heading}</div>
+        <div><span className="eyebrow">Selected match</span>{heading}</div>
         <span className="case-id">{pursuit.caseId}</span>
       </div>
       <ProgressRail status={pursuit.status} />
@@ -558,42 +573,43 @@ function EvidencePanel({
         <div className="source-line"><div className="source-monogram" aria-hidden="true">{pursuit.source.slice(0, 1).toUpperCase()}</div><div><strong>{pursuit.source}</strong><p>{pursuit.sourceNote}</p></div></div>
         <dl className="evidence-facts"><div><dt>Discovered</dt><dd>{pursuit.discovered}</dd></div><div><dt>Contact</dt><dd>{pursuit.contact ?? "Not found"}</dd></div></dl>
         {pursuit.missing.length > 0 && <div className="missing-callout"><CircleAlert size={15} aria-hidden="true" />Missing: {pursuit.missing.join(", ")}</div>}
+        {Boolean(pursuit.amenityEvidence?.length) && <div className="amenity-evidence"><h3>Must-have evidence</h3>{pursuit.amenityEvidence?.map((item) => <div key={item.requirement}><strong>{item.requirement}</strong><blockquote>{item.quote}</blockquote></div>)}<small>Quoted from the source, not independently inspected. Confirm inclusions and availability with the lister.</small></div>}
       </section>
 
       <section className="evidence-section draft-section">
         <div className="section-title-row">
-          <div><span className="eyebrow">Human approval required</span><h3>Inquiry draft</h3></div>
+          <div><span className="eyebrow">Draft → Review → Confirm</span><h3>Email the lister</h3></div>
           {editable && (
             <div className="draft-tools">
               <button
                 className="write-button"
                 type="button"
                 onClick={writeDraft}
-                disabled={writing || !openaiConfigured}
+                disabled={writing || saving || sending || confirming || !openaiConfigured}
                 aria-busy={writing}
-                title={openaiConfigured ? undefined : "Set OPENAI_API_KEY on the Convex deployment"}
+                title={openaiConfigured ? undefined : "Set AI_GATEWAY_API_KEY on the Convex deployment"}
               >
                 <Sparkles size={13} aria-hidden="true" />
-                {writing ? "Writing…" : "Write with OpenAI"}
+                {writing ? "Writing…" : hasModelDraft ? "Rewrite with AI" : "Draft inquiry"}
               </button>
               {hasModelDraft && (
-                <button className="text-button" type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Cancel" : "Edit"}</button>
+                <button className="text-button" type="button" disabled={writing || saving || sending} onClick={() => { setConfirming(false); setEditing((value) => !value); }}>{editing ? "Preview" : "Edit"}</button>
               )}
             </div>
           )}
         </div>
         {editing ? (
           <div className="draft-editor">
-            <label>Subject<input name="subject" maxLength={120} value={subject} onChange={(event) => setSubject(event.target.value)} /></label>
-            <label>Message<textarea name="message" maxLength={5000} rows={5} value={body} onChange={(event) => setBody(event.target.value)} /></label>
-            <button className="secondary-action" type="button" onClick={saveDraft} disabled={saving} aria-busy={saving}>{saving ? "Saving…" : "Save draft"}</button>
+            <label>Subject<input name="subject" maxLength={120} value={subject} disabled={saving || writing || sending} onChange={(event) => setSubject(event.target.value)} /></label>
+            <label>Message<textarea name="message" maxLength={5000} rows={5} value={body} disabled={saving || writing || sending} onChange={(event) => setBody(event.target.value)} /></label>
+            <button className="secondary-action" type="button" onClick={() => void saveDraft()} disabled={!canSave || saving || writing || sending} aria-busy={saving}>{saving ? "Saving…" : "Save for later"}</button>
           </div>
         ) : showDraft ? (
           <div className="draft-preview"><strong>{subject}</strong><p>{body}</p></div>
         ) : (
           <div className="draft-empty" aria-live="polite">
             <Sparkles size={18} aria-hidden="true" />
-            <div><strong>No inquiry yet</strong><p>OpenAI must draft from the retained evidence before you can review, approve or send.</p></div>
+            <div><strong>No inquiry yet</strong><p>Choose Draft inquiry, review the message, then confirm when you are ready to send.</p></div>
           </div>
         )}
         {pursuit.outboundId && (
@@ -613,15 +629,18 @@ function EvidencePanel({
             <p>{pursuit.lastReplySummary}</p>
           </div>
         )}
+        <p className="inquiry-recipient"><strong>To:</strong> {pursuit.contact ?? "No email listed"}{pursuit.isSample && <span> · Controlled sample contact, not a real rental</span>}</p>
+        {inquiryError && <p className="field-error" role="alert">{inquiryError}</p>}
+        {confirming && <div className="send-review" role="status"><strong>Ready to send to {pursuit.contact}?</strong><p>The message above is saved. Confirm only after checking the recipient, rent and amenities. Nothing has been sent yet.</p><button className="secondary-action" type="button" onClick={() => { setConfirming(false); setEditing(true); }}>Back to editing</button></div>}
         <button
           className={cn("send-action", confirming && "is-confirming")}
           type="button"
-          disabled={!canSend || sending}
-          aria-busy={sending}
-          onClick={sendDraft}
+          disabled={confirming ? !canSend || sending || saving || writing : !canSave || !agentmailConfigured || saving || sending || writing}
+          aria-busy={sending || saving}
+          onClick={confirming ? sendDraft : () => void saveDraft(true)}
         >
           <Send size={16} aria-hidden="true" />
-          {sending ? "Queueing…" : confirming ? "Confirm send" : "Send with AgentMail"}
+          {sending ? "Queueing…" : saving ? "Saving for review…" : sendState === "sent" ? "Inquiry sent" : sendState === "sending" ? "Sending inquiry…" : confirming ? "Confirm & send email" : "Review & send"}
         </button>
         <p className="action-note"><ShieldCheck size={13} aria-hidden="true" />{actionNote}</p>
       </section>
@@ -633,10 +652,10 @@ function EmptyEvidencePanel({ city, onEditCriteria }: { city: string; onEditCrit
   return (
     <div className="empty-evidence-panel">
       <div className="empty-evidence-mark" aria-hidden="true"><MapPin size={20} /></div>
-      <span className="eyebrow">Evidence desk</span>
-      <h2>No pursuit selected</h2>
-      <p>New {city} listings will appear here with source evidence, fit reasons and a safe next action.</p>
-      <button className="secondary-action" type="button" onClick={onEditCriteria}><SlidersHorizontal size={15} aria-hidden="true" />Edit search brief</button>
+      <span className="eyebrow">Listing details</span>
+      <h2>Select a match to see its details</h2>
+      <p>Matches in {city} will show the source details, missing information and contact options here.</p>
+      <button className="secondary-action" type="button" onClick={onEditCriteria}><SlidersHorizontal size={15} aria-hidden="true" />Edit preferences</button>
     </div>
   );
 }
@@ -656,6 +675,10 @@ export function RentPilotCockpit() {
   const syncDeliveryState = useMutation(api.email.syncDeliveryState);
   const writeInquiry = useAction(api.drafting.writeInquiry);
   const sweepSampleSource = useAction(api.discovery.sweepSampleSource);
+  const searchWeb = useAction(api.webSearch.search);
+  const latestSearch = useQuery(api.webSearch.latest, sessionId ? { sessionId } : "skip");
+  const [searchingWeb, setSearchingWeb] = useState(false);
+  const [webSearchError, setWebSearchError] = useState<string | null>(null);
   const claimAnonymousSession = useMutation(api.workspace.claimAnonymousSession);
   const { signOut } = useAuthActions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -665,11 +688,16 @@ export function RentPilotCockpit() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sweeping, setSweeping] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const restoreIdentity = viewer && sessionId ? `${viewer.email ?? "account"}:${sessionId}` : null;
   const listRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
   const isCompact = useMediaQuery(COMPACT_QUERY);
   const activeCriteria: SearchCriteria = backendCriteria ?? defaultCriteria;
+  const cityLabel = activeCriteria.city || "your chosen city";
+  const hasSearch = Boolean(backendCriteria);
   const loadingPursuits = backendPursuits === undefined;
 
   useEffect(() => {
@@ -692,6 +720,22 @@ export function RentPilotCockpit() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // signIn() resolves when tokens are stored, before the WebSocket auth
+  // handshake completes. A non-null viewer is the server's acknowledgement.
+  // The mutation is idempotent, so reload also recovers a previously failed claim.
+  useEffect(() => {
+    if (!restoreIdentity || !sessionId) return;
+    let active = true;
+    void claimAnonymousSession({ sessionId }).then((moved) => {
+      if (!active) return;
+      setRestoreError(null);
+      if (moved.criteria || moved.listings) toast.success("Your saved search now follows your account.");
+    }).catch((error) => {
+      if (active) setRestoreError(readableError(error, "Your anonymous search could not be restored. It has not been deleted."));
+    });
+    return () => { active = false; };
+  }, [restoreIdentity, sessionId, restoreAttempt, claimAnonymousSession]);
+
   const pursuits = useMemo<Pursuit[]>(() => {
     if (!backendPursuits) return [];
     return backendPursuits.map((item) => ({
@@ -703,6 +747,7 @@ export function RentPilotCockpit() {
       title: item.title,
       locality: item.locality,
       rent: item.rent,
+      currency: item.currency ?? "INR",
       kind: item.bedrooms,
       score: item.score ?? 0,
       confidence: item.scoreConfidence ?? 0,
@@ -717,6 +762,7 @@ export function RentPilotCockpit() {
       seen: new Date(item.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
       contact: item.contactEmail,
       missing: item.missingFields,
+      amenityEvidence: item.amenityEvidence,
       scoreBreakdown: item.scoreBreakdown.map((part) => ({
         label: part.label,
         score: part.value,
@@ -785,9 +831,6 @@ export function RentPilotCockpit() {
         ),
       ),
     [activeCriteria.city, backendSources],
-  );
-  const sweepReady = citySources.some(
-    (source) => source.permissionStatus === "approved" && !source.isDemo,
   );
 
   useEffect(() => {
@@ -868,17 +911,7 @@ export function RentPilotCockpit() {
   }
 
   async function claimSessionAfterSignIn() {
-    if (!sessionId) return;
-    try {
-      const moved = await claimAnonymousSession({ sessionId });
-      toast.success(
-        moved.listings > 0
-          ? `Saved. ${moved.listings} ${moved.listings === 1 ? "pursuit" : "pursuits"} now follow your account.`
-          : "Signed in. New pursuits will be saved to your account.",
-      );
-    } catch (error) {
-      toast.error(readableError(error, "Signed in, but this search could not be saved."));
-    }
+    toast.info("Signed in. Restoring your saved search…");
   }
 
   async function saveSearchBrief(criteria: SearchCriteria) {
@@ -895,6 +928,10 @@ export function RentPilotCockpit() {
   }
 
   async function runSourceSweep() {
+    if (!hasSearch) {
+      setCriteriaOpen(true);
+      return;
+    }
     if (!viewer) {
       setSignInOpen(true);
       toast.info("Sign in to run the live Firecrawl sweep.");
@@ -924,6 +961,19 @@ export function RentPilotCockpit() {
     }
   }
 
+  async function findLiveLeads() {
+    if (!hasSearch) { setCriteriaOpen(true); return; }
+    if (!viewer) { setSignInOpen(true); toast.info("Sign in to search live sources. Your brief will be kept."); return; }
+    setSearchingWeb(true);
+    setWebSearchError(null);
+    try {
+      const result = await searchWeb({});
+      toast.success(`${result.results.length} web leads found. Only evidence-backed matches enter your pursuit queue.`);
+    } catch (error) {
+      setWebSearchError(readableError(error, "Live search failed. Your brief is safe; try again."));
+    } finally { setSearchingWeb(false); }
+  }
+
 
   const panel = selected ? (
     <EvidencePanel
@@ -938,15 +988,15 @@ export function RentPilotCockpit() {
       onWriteDraft={writePursuitDraft}
     />
   ) : (
-    <EmptyEvidencePanel city={activeCriteria.city} onEditCriteria={() => setCriteriaOpen(true)} />
+    <EmptyEvidencePanel city={cityLabel} onEditCriteria={() => setCriteriaOpen(true)} />
   );
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#pursuits">Skip to pursuits</a>
+      <a className="skip-link" href="#pursuits">Skip to matches</a>
       <header className="topbar">
         <Wordmark />
-        <nav className="desktop-nav" aria-label="Primary"><a className="is-active" href="#pursuits">Pursuits</a><a href="#activity">Activity</a><a href="#sources">Sources</a></nav>
+        <nav className="desktop-nav" aria-label="Primary"><a className="is-active" href="#pursuits">Matches</a><a href="#activity">Activity</a><a href="#sources">Sources</a></nav>
         <div className="topbar-actions">
           <span className="demo-badge"><span aria-hidden="true" />{integrationStatus?.firecrawlConfigured ? "Convex + Firecrawl live" : backendPursuits ? "Convex live" : "Connecting"}</span>
           {viewer ? (
@@ -955,16 +1005,16 @@ export function RentPilotCockpit() {
               <button className="quiet-icon" type="button" aria-label="Sign out" onClick={() => { void signOut(); }}><LogOut size={14} aria-hidden="true" /></button>
             </span>
           ) : (
-            <button className="save-search-button" type="button" onClick={() => setSignInOpen(true)}>Save your search</button>
+            <button className="save-search-button" type="button" onClick={() => setSignInOpen(true)}>Sign in</button>
           )}
           <button className="icon-button" type="button" aria-label="Edit search preferences" onClick={() => setCriteriaOpen(true)}><Settings2 size={17} aria-hidden="true" /></button>
           <button className="icon-button mobile-menu-button" type="button" aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((value) => !value)}><Menu size={19} aria-hidden="true" /></button>
         </div>
         {mobileMenuOpen && (
           <nav className="mobile-menu" id="mobile-menu" aria-label="Mobile" ref={menuRef}>
-            <a href="#pursuits" onClick={() => setMobileMenuOpen(false)}>Pursuits</a>
+            <a href="#pursuits" onClick={() => setMobileMenuOpen(false)}>Matches</a>
             <a href="#activity" onClick={() => setMobileMenuOpen(false)}>Activity</a>
-            <button type="button" onClick={() => { setCriteriaOpen(true); setMobileMenuOpen(false); }}><SlidersHorizontal size={15} aria-hidden="true" />Search brief</button>
+            <button type="button" onClick={() => { setCriteriaOpen(true); setMobileMenuOpen(false); }}><SlidersHorizontal size={15} aria-hidden="true" />Search preferences</button>
           </nav>
         )}
       </header>
@@ -972,22 +1022,23 @@ export function RentPilotCockpit() {
       <div className="workspace-grid">
         <aside className="context-rail" aria-label="Search criteria and source status">
           <section className="context-section search-brief">
-            <span className="eyebrow">Active search · {activeCriteria.city}</span><p className="rail-lede">Rooms worth pursuing in {activeCriteria.city}, sorted by personal fit, evidence quality and freshness.</p>
-            <button className="secondary-action full-width" type="button" onClick={() => setCriteriaOpen(true)}><SlidersHorizontal size={15} aria-hidden="true" />Refine city and areas</button>
+            <span className="eyebrow">{hasSearch ? `Active search · ${cityLabel}` : "Start your room search"}</span><p className="rail-lede">{hasSearch ? `Your requirements for rooms in ${cityLabel}, ${activeCriteria.country}.` : "Choose where you want to live and how much you want to spend."}</p>
+            <button className="secondary-action full-width" type="button" onClick={() => setCriteriaOpen(true)}><SlidersHorizontal size={15} aria-hidden="true" />{hasSearch ? "Change location and budget" : "Choose your location"}</button>
           </section>
           <section className="context-section criteria-list">
-            <h2>Search brief</h2>
+            <h2>Search preferences</h2>
             {sessionId && backendCriteria === undefined ? (
               <div className="criteria-skeleton" aria-label="Loading search brief"><span /><span /><span /></div>
             ) : (
               <>
-                <dl><div><dt>City</dt><dd>{activeCriteria.city}</dd></div><div><dt>Budget</dt><dd>{compactCurrency(activeCriteria.budgetMin)} to {compactCurrency(activeCriteria.budgetMax)}</dd></div><div><dt>Areas</dt><dd>{activeCriteria.localities.join(", ")}</dd></div><div><dt>Looking for</dt><dd>{activeCriteria.bedrooms.join(" or ")}</dd></div></dl>
+                <dl><div><dt>Location</dt><dd>{hasSearch ? `${cityLabel}, ${activeCriteria.country}` : "Not chosen yet"}</dd></div><div><dt>Budget</dt><dd>{hasSearch ? `${formatMoney(activeCriteria.budgetMin, activeCriteria.currency, true)} to ${formatMoney(activeCriteria.budgetMax, activeCriteria.currency, true)}` : "Choose your currency and range"}</dd></div><div><dt>Areas</dt><dd>{activeCriteria.localities.join(", ") || "Choose your neighbourhoods"}</dd></div><div><dt>Looking for</dt><dd>{activeCriteria.bedrooms.join(" or ")}</dd></div></dl>
                 <div className="must-have-list">{activeCriteria.mustHaves.map((item) => <span key={item}><Check size={12} aria-hidden="true" />{item}</span>)}</div>
               </>
             )}
           </section>
           <section className="context-section" id="sources">
             <div className="section-title-row"><h2>Source health</h2></div>
+            <p className="rail-empty">Sample sources test the workflow. They do not establish live coverage in {cityLabel}.</p>
             {citySources.map((source) => (
               <div
                 className={cn("source-health-row", source.permissionStatus !== "approved" && "is-muted")}
@@ -1011,7 +1062,7 @@ export function RentPilotCockpit() {
               <div className="source-health-row is-muted"><span className="health-dot" aria-hidden="true" /><div><strong>Convex sources</strong><small>Connecting</small></div><span className="health-label">Sync</span></div>
             )}
             {backendSources && citySources.length === 0 && (
-              <div className="source-health-row is-muted"><span className="health-dot" aria-hidden="true" /><div><strong>No {activeCriteria.city} source yet</strong><small>Add a permitted source before discovery</small></div><span className="health-label">Needed</span></div>
+              <div className="source-health-row is-muted"><span className="health-dot" aria-hidden="true" /><div><strong>No local source yet</strong><small>Real listings need a permitted source for {cityLabel}</small></div><span className="health-label">Needed</span></div>
             )}
           </section>
           <section className="context-section mini-activity">
@@ -1025,28 +1076,45 @@ export function RentPilotCockpit() {
         </aside>
 
         <main className="pursuit-workbench" id="pursuits" tabIndex={-1}>
+          {restoreError && <div className="form-error" role="alert"><p>{restoreError}</p><button className="secondary-action" type="button" onClick={() => { setRestoreError(null); setRestoreAttempt((attempt) => attempt + 1); }}>Retry restoring search</button></div>}
           <div className="workbench-head">
             <div>
-              <span className="eyebrow">Rental control desk</span>
-              <h1>Your {activeCriteria.city} pursuits</h1>
+              <span className="eyebrow">Your room search</span>
+              <h1>{hasSearch ? `Your ${cityLabel} matches` : "Where do you want to live?"}</h1>
               <p aria-live="polite">
                 {loadingPursuits
-                  ? "Loading your queue…"
+                  ? "Loading your matches…"
                   : visiblePursuits.length === 0
-                    ? "Nothing in this view"
+                    ? hasSearch ? "Review web leads below and check which listings meet your requirements." : "Choose your area and budget, then sign in to search live sources."
                     : `${visiblePursuits.length} ${visiblePursuits.length === 1 ? "option" : "options"} with a clear next step`}
               </p>
             </div>
-            <button className={sweepReady ? "primary-action" : "secondary-action sweep-action"} type="button" onClick={runSourceSweep} disabled={sweeping}>
+            <button className="primary-action" type="button" onClick={findLiveLeads} disabled={searchingWeb || sweeping || backendCriteria === undefined} aria-busy={searchingWeb}>
               <Radar size={16} aria-hidden="true" />
-              <span className="action-label">{sweeping ? "Sweeping…" : sweepReady ? `Run ${activeCriteria.city} sweep` : "Approve source and sweep"}</span>
+              <span className="action-label">{searchingWeb ? "Searching the web…" : hasSearch ? "Find live leads" : "Choose your location"}</span>
             </button>
           </div>
+          {hasSearch && <section className="live-leads" aria-labelledby="live-leads-title" aria-busy={searchingWeb}>
+            <div className="section-title-row"><h2 id="live-leads-title">Web leads <span className="eyebrow">Links to investigate, not verified rooms</span></h2><Search size={16} aria-hidden="true" /></div>
+            <p>Open these links to investigate each room. A listing enters your matches only when an approved source supports every requirement.</p>
+            <details className="verification-guide"><summary>How listing checks and email work</summary><dl><div><dt>Unverified lead</dt><dd>A search snippet only. Open the source to check details or contact the lister there. RentPilot does not guess email addresses.</dd></div><div><dt>Evidence-backed match</dt><dd>A permitted page supports your budget, area, room type and every must-have. Landlord identity, safety and current availability remain unverified.</dd></div><div><dt>Email-ready</dt><dd>A match also needs a source-listed email and your sign-in. Choose Draft inquiry, edit if needed, then Review &amp; send and Confirm &amp; send email. Missing contact details keep email disabled.</dd></div></dl><p>RentPilot has not inspected these properties. Confirm availability and inclusions with the lister. Sample listings remain fictional.</p></details>
+            <p className="lead-location-note">Locality matching: {activeCriteria.localities.join(" / ")}. No distance radius is verified.</p>
+            {searchingWeb && <p role="status">Finding source links and checking permitted pages…</p>}
+            {webSearchError && <div role="alert" className="field-error"><p>{webSearchError}</p><button className="secondary-action" type="button" onClick={findLiveLeads} disabled={searchingWeb}>Retry live search</button></div>}
+            {latestSearch ? <>
+              <details><summary>Search query and time</summary><p>{latestSearch.query}</p><time dateTime={new Date(latestSearch.searchedAt).toISOString()}>{new Date(latestSearch.searchedAt).toLocaleString()}</time></details>
+              {latestSearch.results.length ? <ul className="web-lead-list">{latestSearch.results.map((lead) => <li key={lead.url}>
+                <span className="eyebrow">{lead.status === "matched" ? "Evidence-backed match" : lead.status === "excluded" ? "Not a match / check incomplete" : lead.status === "blocked" ? "Source blocked · unverified" : "Unverified lead"} · {new URL(lead.url).hostname}</span>
+                <h3><a href={lead.url} target="_blank" rel="noopener noreferrer">{lead.title}<ArrowUpRight size={15} aria-hidden="true" /><span className="sr-only"> (opens source in a new tab)</span></a></h3>
+                <p>{lead.description}</p><small>{lead.note}</small>
+              </li>)}</ul> : <p>No web leads found for this brief. Try another locality or edit your requirements; nothing was substituted.</p>}
+            </> : !searchingWeb && <p>No live search yet. Choose “Find live leads” to start.</p>}
+          </section>}
           <div className="toolbar">
-            <label className="search-box"><Search size={16} aria-hidden="true" /><span className="sr-only">Search pursuits</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search area or listing" /></label>
+            <label className="search-box"><Search size={16} aria-hidden="true" /><span className="sr-only">Filter matches</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter matches by area or title" /></label>
             <div className="filter-wrap"><Filter size={14} aria-hidden="true" /><label htmlFor="status-filter" className="sr-only">Filter by status</label><select id="status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | PursuitStatus)}><option value="all">All stages</option>{statusOrder.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}<option value="closed">Closed</option></select><ChevronDown size={14} aria-hidden="true" /></div>
           </div>
-          <div className="list-heading" aria-hidden="true"><span>Fit</span><span>Pursuit and evidence</span><span>Open</span></div>
+          <div className="list-heading" aria-hidden="true"><span>Fit</span><span>Match and listing details</span><span>Open</span></div>
           <div ref={listRef}>
             {loadingPursuits ? (
               <PursuitSkeleton />
@@ -1057,12 +1125,12 @@ export function RentPilotCockpit() {
                 ))}
               </ul>
             ) : query || statusFilter !== "all" ? (
-              <div className="empty-state"><Search size={22} aria-hidden="true" /><h3>No pursuits match</h3><p>Clear the search or choose another stage.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Reset filters</button></div>
+              <div className="empty-state"><Search size={22} aria-hidden="true" /><h3>No matches with these filters</h3><p>Clear the text filter or choose another stage.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Reset filters</button></div>
             ) : (
-              <div className="empty-state"><MapPin size={22} aria-hidden="true" /><h3>No pursuits in {activeCriteria.city} yet</h3><p>Your search brief is saved. Nothing is fetched until a {activeCriteria.city} source grants written permission.</p><button type="button" onClick={runSourceSweep} disabled={sweeping}>{sweeping ? "Sweeping…" : sweepReady ? `Run the ${activeCriteria.city} sweep` : `Approve a ${activeCriteria.city} source and sweep`}</button></div>
+              <div className="empty-state"><MapPin size={22} aria-hidden="true" /><h3>{hasSearch ? `No evidence-backed matches in ${cityLabel} yet` : "Start with your area and budget"}</h3><p>{hasSearch ? "Matches need source evidence for your rent range, area, room type and every must-have. You can still investigate the web leads above or adjust your preferences." : "Add your preferred areas, rent range and must-haves. You can choose any city; available sources vary by location."}</p><button type="button" onClick={() => setCriteriaOpen(true)}>Edit location and requirements</button>{hasSearch && <button type="button" onClick={runSourceSweep} disabled={sweeping || searchingWeb}>{sweeping ? "Checking sample…" : "Test fictional sample pages (same hard filters)"}</button>}</div>
             )}
           </div>
-          <section className="decision-note"><Sparkles size={17} aria-hidden="true" /><div><strong>Why this queue is different</strong><p>Each score shows its evidence. Missing contact details reduce confidence instead of disappearing behind a recommendation.</p></div></section>
+          <section className="decision-note"><Sparkles size={17} aria-hidden="true" /><div><strong>Check the details before you contact a lister</strong><p>Each match shows its score breakdown and missing contact details. Confirm availability, inclusions and any extra charges with the lister.</p></div></section>
           <section className="mobile-activity" id="activity" aria-label="Recent activity">
             <div className="section-title-row"><h2>Recent activity</h2><Clock3 size={15} aria-hidden="true" /></div>
             {visibleActivity.length > 0 ? (
@@ -1098,7 +1166,7 @@ export function RentPilotCockpit() {
       </div>
 
       <nav className="mobile-bottom-nav" aria-label="Mobile primary">
-        <a href="#pursuits" className="is-active"><Inbox size={18} aria-hidden="true" /><span>Pursuits</span></a>
+        <a href="#pursuits" className="is-active"><Inbox size={18} aria-hidden="true" /><span>Matches</span></a>
         <a href="#activity"><Activity size={18} aria-hidden="true" /><span>Activity</span></a>
         <button type="button" onClick={() => toast.info(integrationStatus?.agentmailConfigured ? "AgentMail delivery is connected." : "AgentMail inbox is ready and waiting for its deployment key.")}><Mail size={18} aria-hidden="true" /><span>Inbox</span></button>
       </nav>

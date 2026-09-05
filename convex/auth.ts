@@ -2,8 +2,10 @@ import { AgentMail } from "@agentmail/convex";
 import { Email } from "@convex-dev/auth/providers/Email";
 import { convexAuth, type EmailConfig } from "@convex-dev/auth/server";
 import { components } from "./_generated/api";
+import { waitForCodeAcceptance } from "./authDelivery";
 
-const agentmail = new AgentMail(components.agentmail);
+// Avoid delayed retries delivering an old code after a newer request.
+const agentmail = new AgentMail(components.agentmail, { retryAttempts: 1 });
 
 /**
  * Sign-in codes ride the same AgentMail inbox the inquiries do. Verifying the
@@ -33,7 +35,7 @@ async function sendSignInCode(
     );
   }
   const minutes = Math.max(1, Math.round((expires.getTime() - Date.now()) / 60000));
-  await agentmail.sendMessage(
+  const outboundId = await agentmail.sendMessage(
     ctx as Parameters<typeof agentmail.sendMessage>[0],
     inboxId,
     {
@@ -48,6 +50,10 @@ async function sendSignInCode(
       labels: ["rentpilot", "sign-in"],
     },
   );
+  await waitForCodeAcceptance(() => agentmail.status(
+    ctx as Parameters<typeof agentmail.status>[0],
+    outboundId,
+  ));
 }
 
 export const AgentMailCode = Email({

@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { isAnonymousSessionId, ownerKey, userKey } from "./session";
+import { INQUIRY_MODEL } from "./aiConfig";
+import { validCurrency } from "./location";
 
 const permissionStatus = v.union(
   v.literal("approved"),
@@ -20,6 +22,8 @@ const criteriaResult = v.union(
     _id: v.id("criteria"),
     _creationTime: v.number(),
     city: v.string(),
+    country: v.string(),
+    currency: v.string(),
     sessionId: v.union(v.string(), v.null()),
     budgetMin: v.number(),
     budgetMax: v.number(),
@@ -50,17 +54,13 @@ export const getCriteria = query({
           .order("desc")
           .first()
       : null;
-    const criteria =
-      sessionCriteria ??
-      (await ctx.db
-        .query("criteria")
-        .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", undefined))
-        .order("desc")
-        .first());
+    const criteria = sessionCriteria;
     return criteria
       ? {
           ...criteria,
           city: criteria.city ?? "Bengaluru",
+          country: criteria.country ?? "India",
+          currency: criteria.currency ?? "INR",
           sessionId: criteria.sessionId ?? null,
           contactName: criteria.contactName ?? "",
           contactEmail: criteria.contactEmail ?? null,
@@ -73,6 +73,8 @@ export const saveCriteria = mutation({
   args: {
     sessionId: v.string(),
     city: v.string(),
+    country: v.string(),
+    currency: v.string(),
     budgetMin: v.number(),
     budgetMax: v.number(),
     localities: v.array(v.string()),
@@ -84,6 +86,10 @@ export const saveCriteria = mutation({
   returns: v.id("criteria"),
   handler: async (ctx, args) => {
     const city = args.city.trim();
+    const country = args.country.trim();
+    const currency = args.currency.trim().toUpperCase();
+    if (country.length < 2 || country.length > 80) throw new Error("Enter a country or region between 2 and 80 characters.");
+    if (!validCurrency(currency)) throw new Error("Choose a supported currency code.");
     const contactName = args.contactName?.trim() ?? "";
     const contactEmail = args.contactEmail?.trim() ?? "";
     const userId = await getAuthUserId(ctx);
@@ -129,8 +135,10 @@ export const saveCriteria = mutation({
     const criteriaId = await ctx.db.insert("criteria", {
       sessionId: owner,
       city,
-      budgetMin: Math.round(args.budgetMin),
-      budgetMax: Math.round(args.budgetMax),
+      country,
+      currency,
+      budgetMin: args.budgetMin,
+      budgetMax: args.budgetMax,
       localities,
       bedrooms,
       mustHaves,
@@ -166,26 +174,12 @@ export const listActivity = query({
   ),
   handler: async (ctx, args) => {
     const owner = await ownerKey(ctx, args.sessionId);
-    if (!owner) {
-      return await ctx.db
-        .query("activity")
-        .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", undefined))
-        .order("desc")
-        .take(20);
-    }
-    const [personal, shared] = await Promise.all([
-      ctx.db
-        .query("activity")
-        .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", owner))
-        .order("desc")
-        .take(12),
-      ctx.db
-        .query("activity")
-        .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", undefined))
-        .order("desc")
-        .take(12),
-    ]);
-    return [...personal, ...shared].sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+    if (!owner) return [];
+    return await ctx.db
+      .query("activity")
+      .withIndex("by_session_and_created_at", (q) => q.eq("sessionId", owner))
+      .order("desc")
+      .take(20);
   },
 });
 
@@ -404,8 +398,8 @@ export const integrationStatus = query({
   handler: async () => ({
     agentmailConfigured: Boolean(process.env.AGENTMAIL_API_KEY),
     firecrawlConfigured: Boolean(process.env.FIRECRAWL_API_KEY),
-    openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
-    openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    openaiConfigured: Boolean(process.env.AI_GATEWAY_API_KEY),
+    openaiModel: INQUIRY_MODEL,
     sampleContactConfigured: Boolean(process.env.SAMPLE_SOURCE_CONTACT),
   }),
 });

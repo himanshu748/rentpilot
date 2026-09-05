@@ -1,7 +1,9 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertListingInSession, ownerKey } from "./session";
-import { pursuitStatus, sendStatus } from "./schema";
+import { amenityEvidence, pursuitStatus, sendStatus } from "./schema";
+import { sameMarket } from "./location";
+import { eligibilityProblems } from "./eligibility";
 
 const scorePart = v.object({
   label: v.string(),
@@ -14,6 +16,8 @@ const pursuit = v.object({
   _creationTime: v.number(),
   sessionId: v.optional(v.string()),
   city: v.optional(v.string()),
+  country: v.optional(v.string()),
+  currency: v.optional(v.string()),
   sourceId: v.id("sources"),
   sourceName: v.string(),
   sourceDomain: v.string(),
@@ -26,6 +30,7 @@ const pursuit = v.object({
   rent: v.number(),
   locality: v.string(),
   bedrooms: v.string(),
+  amenityEvidence: v.optional(amenityEvidence),
   contactEmail: v.union(v.string(), v.null()),
   contactPhone: v.union(v.string(), v.null()),
   missingFields: v.array(v.string()),
@@ -56,29 +61,19 @@ export const list = query({
   returns: v.array(pursuit),
   handler: async (ctx, args) => {
     const owner = await ownerKey(ctx, args.sessionId);
-    let listings = await ctx.db
+    if (!owner) return [];
+    const criteria = await ctx.db.query("criteria")
+      .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner))
+      .order("desc").first();
+    if (!criteria) return [];
+    const listings = await ctx.db
       .query("listings")
       .withIndex("by_session_and_last_seen_at", (q) => q.eq("sessionId", owner))
       .order("desc")
       .take(50);
 
-    if (owner && listings.length === 0) {
-      const criteria = await ctx.db
-        .query("criteria")
-        .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner))
-        .order("desc")
-        .first();
-      if (!criteria || (criteria.city ?? "Bengaluru").toLowerCase() === "bengaluru") {
-        listings = await ctx.db
-          .query("listings")
-          .withIndex("by_session_and_last_seen_at", (q) => q.eq("sessionId", undefined))
-          .order("desc")
-          .take(50);
-      }
-    }
-
     return await Promise.all(
-      listings.map(async (listing) => {
+      listings.filter((listing) => sameMarket(listing, criteria) && eligibilityProblems(listing, criteria).length === 0).map(async (listing) => {
         const source = await ctx.db.get(listing.sourceId);
         const thread = await ctx.db
           .query("threads")

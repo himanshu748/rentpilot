@@ -46,7 +46,7 @@ export function SignInDialog({
       await signIn("agentmail-code", { email: address });
       setStep("code");
     } catch {
-      setError("Could not send the code. Check that AgentMail is configured, then try again.");
+      setError("We could not confirm that your code was sent. Wait a minute, then try again. Your search preferences are still saved.");
     } finally {
       setBusy(false);
     }
@@ -55,7 +55,7 @@ export function SignInDialog({
   async function verifyCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const entered = code.trim();
-    if (entered.length < 6) {
+    if (!/^\d{6}$/.test(entered)) {
       setError("Enter the six digit code from your inbox.");
       return;
     }
@@ -90,11 +90,11 @@ export function SignInDialog({
         >
           <div className="criteria-dialog-head">
             <div>
-              <span className="eyebrow">Keep this search</span>
-              <Dialog.Title>Save your pursuits</Dialog.Title>
+              <span className="eyebrow">Email sign-in</span>
+              <Dialog.Title>Sign in to search live listings</Dialog.Title>
               <Dialog.Description id="signin-dialog-description">
-                Landlords reply hours or days later. An account gives that reply somewhere to land
-                that is not one browser.
+                Sign-in is required for web searches, AI drafts and sending inquiries.
+                Your saved preferences and matches will follow your account.
               </Dialog.Description>
             </div>
             <Dialog.Close className="icon-button" aria-label="Close sign in">
@@ -123,7 +123,7 @@ export function SignInDialog({
                   placeholder="you@example.com"
                   aria-invalid={Boolean(error)}
                 />
-                <small>AgentMail sends a six digit code. No password to remember.</small>
+                <small>We will email you a six-digit sign-in code. You do not need a password.</small>
               </label>
               <div className="criteria-form-actions">
                 <Dialog.Close className="secondary-action" type="button">
@@ -144,7 +144,7 @@ export function SignInDialog({
                 </div>
               )}
               <label className="form-field" htmlFor="signin-code">
-                <span>Six digit code</span>
+                <span>Six-digit code</span>
                 <input
                   id="signin-code"
                   inputMode="numeric"
@@ -156,14 +156,14 @@ export function SignInDialog({
                   placeholder="000000"
                   aria-invalid={Boolean(error)}
                 />
-                <small>Sent to {email.trim()}. It expires in 15 minutes.</small>
+                <small>Our email provider accepted the code email for {email.trim()}. Check your inbox or spam folder. The code expires in 15 minutes.</small>
               </label>
               <div className="criteria-form-actions">
                 <button className="secondary-action" type="button" onClick={reset}>
                   Use another address
                 </button>
                 <button className="primary-action" type="submit" disabled={busy}>
-                  {busy ? "Checking…" : "Verify and save"}
+                  {busy ? "Checking…" : "Verify and sign in"}
                 </button>
               </div>
             </form>

@@ -1,4 +1,30 @@
 @import "tailwindcss";
+
+.live-leads { margin-block: 24px; padding: 20px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
+.live-leads h2 { font-size: 16px; }
+.live-leads h2 .eyebrow { display: block; margin-top: 6px; }
+.live-leads > p, .live-leads details { margin-top: 12px; font-size: 13px; line-height: 1.6; }
+.live-leads summary { cursor: pointer; min-height: 44px; padding-block: 12px; }
+.live-leads summary:focus-visible { outline: 3px solid var(--sage-strong); outline-offset: 2px; }
+.verification-guide { border-block: 1px solid var(--hairline); }
+.verification-guide dl { display: grid; gap: 16px; margin-block: 12px; }
+.verification-guide dt { font-weight: 700; }
+.verification-guide dd { margin: 4px 0 0; }
+.verification-guide > p { margin-block: 16px; }
+.inquiry-recipient { margin-top: 16px; font-size: 13px; overflow-wrap: anywhere; }
+.send-review { margin-top: 16px; padding: 16px; border: 1px solid var(--sage-strong); border-radius: 8px; background: var(--sage); font-size: 13px; overflow-wrap: anywhere; }
+.send-review p { margin-block: 12px; line-height: 1.6; }
+.draft-section button { min-height: 44px; }
+.web-lead-list { list-style: none; padding: 0; margin-top: 16px; }
+.web-lead-list li { padding-block: 16px; border-top: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.web-lead-list h3 { font-size: 15px; margin-block: 4px; }
+.web-lead-list a { display: flex; align-items: center; gap: 8px; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
+.web-lead-list a svg { flex-shrink: 0; }
+.web-lead-list p, .web-lead-list small { font-size: 13px; line-height: 1.6; }
+.web-lead-list small { display: block; margin-top: 8px; }
+.amenity-evidence { margin-block: 20px; font-size: 13px; }
+.amenity-evidence h3 { margin-bottom: 12px; }
+.amenity-evidence blockquote { margin: 6px 0 16px; padding-left: 12px; border-left: 2px solid var(--sage-strong); }
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -52,7 +78,7 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
 button, input, textarea, select { font: inherit; }
 button, a, select { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgb(50 102 75 / 26%); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--sage-strong); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 :target, #pursuits, #activity, #sources { scroll-margin-top: 78px; }
 main:focus { outline: none; }
@@ -276,8 +302,8 @@ main:focus { outline: none; }
 .form-field-wide { grid-column: 1 / -1; }
 .form-field > span { display: flex; align-items: baseline; gap: 5px; }
 .form-field > span small { color: var(--ink-muted); font-size: 9px; font-weight: 500; }
-.form-field input, .money-input { width: 100%; min-height: 42px; color: var(--ink); border: 1px solid var(--hairline); background: #fbf9f3; border-radius: 8px; }
-.form-field input { padding: 0 11px; font: 500 13px var(--sans); }
+.form-field input, .form-field select, .money-input { width: 100%; min-height: 42px; color: var(--ink); border: 1px solid var(--hairline); background: var(--surface); border-radius: 8px; }
+.form-field input, .form-field select { padding: 0 11px; font: 500 13px var(--sans); }
 .form-field input::placeholder { color: #7d8881; }
 .form-field input[aria-invalid="true"], .money-input:has(input[aria-invalid="true"]) { border-color: var(--error); }
 .form-field > small { color: var(--ink-muted); font-size: 9px; font-weight: 500; line-height: 1.4; }
@@ -338,7 +364,7 @@ main:focus { outline: none; }
   .workbench-head .primary-action, .workbench-head .sweep-action { width: 42px; min-width: 42px; padding: 0; }
   .workbench-head .action-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .toolbar { grid-template-columns: 1fr 132px; }
-  .search-box input, .filter-wrap select, .draft-editor input, .draft-editor textarea, .form-field input { font-size: 16px; }
+  .search-box input, .filter-wrap select, .draft-editor input, .draft-editor textarea, .form-field input, .form-field select { font-size: 16px; }
   .filter-wrap select { padding-right: 24px; }
   .pursuit-row { min-height: 125px; grid-template-columns: 52px minmax(0, 1fr) 20px; padding-inline: 8px; }
   .list-heading { grid-template-columns: 52px 1fr 20px; padding-inline: 8px; }

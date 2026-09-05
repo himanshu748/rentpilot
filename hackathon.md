@@ -8,7 +8,8 @@ RentPilot searches for rooms using a renter's city, preferred areas, budget, hom
 - Pursuit cockpit: [https://ceaseless-pigeon-981.convex.site/app](https://ceaseless-pigeon-981.convex.site/app)
 - Permitted sample source: [https://ceaseless-pigeon-981.convex.site/sample-source](https://ceaseless-pigeon-981.convex.site/sample-source)
 - Public source: [https://github.com/himanshu748/rentpilot](https://github.com/himanshu748/rentpilot)
-- Demo video: pending recording of the final deployed loop
+- Demo video: [2:29 deployed-product walkthrough on X](https://x.com/jhahimanshu653/status/2096278313539092555), with live integrations and clearly identified test listings
+- Sponsor showcase: [X post](https://x.com/jhahimanshu653/status/2096278313539092555), tagging Convex, OpenAI, Firecrawl, AgentMail and Wayne Sutton, with Codex development credit
 - Judge walkthrough and demo script: [submission.md](./submission.md)
 - Real-ad research: [Bithauli/Bhitauli evidence and gaps](./docs/inventory-evidence.md); ads found, no exact-match vacancy or approved real source established
 - Community showcase: [Convex Discord show-and-tell](https://discord.com/channels/1019350475847499849/1141187289024839760/threads/1545677744849817620), posted September 5 with the live app, repo, screenshot and current limitations. This does not replace the required X/LinkedIn post.
@@ -93,7 +94,7 @@ The production sender inbox and least-privilege API key are configured. The `mes
 ## Submission checklist
 
 - [x] Verify Luma registration (registration-confirmation email dated August 26, checked September 5)
-- [ ] Participant confirms personal eligibility under the official rules
+- [x] Participant confirms personal eligibility under the official rules (September 5)
 - [x] New application started after August 25
 - [x] Convex backend with queries, mutations, actions, real-time sync, auth, workflows, and components
 - [x] Public GitHub repository
@@ -104,6 +105,6 @@ The production sender inbox and least-privilege API key are configured. The `mes
 - [x] Configure production OpenAI access through Vercel AI Gateway and verify a structured draft probe
 - [x] Verify a real model-authored inquiry through the signed-in product flow
 - [x] Register AgentMail `message.received` webhook and verify a listing-linked reply round trip
-- [ ] Record an under-three-minute deployed-product demo
-- [ ] Post on X or LinkedIn and tag `@convex`, `@OpenAI`, `@firecrawl`, and `@agentmail`
+- [x] Record an under-three-minute deployed-product demo (2:29, linked above)
+- [x] Post on X or LinkedIn and tag `@convex`, `@OpenAI`, `@firecrawl`, and `@agentmail`
 - [ ] Submit the repository, live URL, and video at [vibeapps.dev](https://vibeapps.dev) before September 22 at 12:00 PM PT

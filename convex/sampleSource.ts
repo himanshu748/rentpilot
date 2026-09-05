@@ -89,9 +89,9 @@ const shell = (title: string, inner: string) => `<!doctype html>
   .permission { margin: 18px 0 30px; padding:14px 16px; border:1px solid #cbd8c7;
                 background:#eef5eb; border-radius:8px; font-size:13px; }
   article { padding:18px 0; border-top:1px solid #d9d3c6; }
-  dl { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:10px 0 0; font-size:14px; }
-  dt { color:#637068; }
-  dd { margin:0; }
+  table { width:100%; border-collapse:collapse; margin:10px 0 0; font-size:14px; }
+  th, td { padding:5px 14px 5px 0; text-align:left; vertical-align:top; }
+  th { color:#637068; font-weight:normal; }
   footer { margin-top:34px; color:#637068; font-size:12px; }
 </style></head>
 <body><main>${inner}</main></body></html>`;
@@ -138,18 +138,18 @@ export function renderListing(listing: SampleListing, place: SamplePlace) {
     `${listing.title} | RentPilot sample source`,
     `<h1>${listing.title} in ${escapeHtml(place.area)}</h1>
      <p class="permission">${PERMISSION_NOTICE}</p>
-     <dl>
-       <dt>Monthly rent</dt><dd>${escapeHtml(place.currency)} ${listing.rent} per month</dd>
-       <dt>City</dt><dd>${escapeHtml(place.city)}</dd>
-       <dt>Country</dt><dd>${escapeHtml(place.country)}</dd>
-       <dt>Currency</dt><dd>${escapeHtml(place.currency)}</dd>
-       <dt>Locality</dt><dd>${escapeHtml(place.area)}, ${escapeHtml(place.city)}</dd>
-       <dt>Home type</dt><dd>${listing.bedrooms}</dd>
-       <dt>Deposit</dt><dd>${escapeHtml(place.currency)} ${listing.deposit}</dd>
-       <dt>Furnishing</dt><dd>${listing.furnishing}</dd>
-       <dt>Available</dt><dd>${listing.available}</dd>
-       <dt>Contact email</dt><dd>${email ? escapeHtml(email) : "Not published"}</dd>
-     </dl>
+     <table><tbody>
+       <tr><th scope="row">Monthly rent</th><td>${escapeHtml(place.currency)} ${listing.rent} per month</td></tr>
+       <tr><th scope="row">City</th><td>${escapeHtml(place.city)}</td></tr>
+       <tr><th scope="row">Country</th><td>${escapeHtml(place.country)}</td></tr>
+       <tr><th scope="row">Currency</th><td>${escapeHtml(place.currency)}</td></tr>
+       <tr><th scope="row">Locality</th><td>${escapeHtml(place.area)}, ${escapeHtml(place.city)}</td></tr>
+       <tr><th scope="row">Home type</th><td>${listing.bedrooms}</td></tr>
+       <tr><th scope="row">Deposit</th><td>${escapeHtml(place.currency)} ${listing.deposit}</td></tr>
+       <tr><th scope="row">Furnishing</th><td>${listing.furnishing}</td></tr>
+       <tr><th scope="row">Available</th><td>${listing.available}</td></tr>
+       <tr><th scope="row">Contact email</th><td>${email ? escapeHtml(email) : "Not published"}</td></tr>
+     </tbody></table>
      <p>${listing.notes}</p>
      <footer>Sample record published by RentPilot. Not a live tenancy.</footer>`,
   );

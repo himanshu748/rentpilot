@@ -337,13 +337,19 @@ main:focus { outline: none; }
 
 @media (max-width: 1050px) {
   .topbar { grid-template-columns: 205px 1fr auto; }
+  .topbar-actions > .demo-badge { display: none; }
   .workspace-grid { grid-template-columns: 205px minmax(0, 1fr); }
   .detail-shell { display: none; }
 }
 
 @media (max-width: 720px) {
   .app-shell { padding-bottom: calc(66px + env(safe-area-inset-bottom)); background-size: 24px 24px; }
-  .topbar { height: 58px; grid-template-columns: 1fr auto; padding: 0 14px; }
+  .topbar { height: 58px; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 0 14px; }
+  .topbar-actions { min-width: 0; justify-content: flex-end; gap: 8px; }
+  .topbar-actions > .demo-badge { display: none; }
+  .account-chip { min-width: 0; height: 40px; }
+  .account-email { min-width: 0; }
+  .account-chip .quiet-icon, .mobile-menu-button { flex-shrink: 0; width: 40px; height: 40px; }
   .desktop-nav, .topbar-actions > .icon-button:not(.mobile-menu-button) { display: none; }
   .save-search-button { padding-inline: 9px; font-size: 11px; }
   .account-email { max-width: 92px; }

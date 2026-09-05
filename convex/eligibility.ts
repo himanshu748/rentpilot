@@ -4,6 +4,15 @@ export type AmenityEvidence = { requirement: string; status: "present" | "absent
 type Brief = { city?: string; country?: string; currency?: string; budgetMin: number; budgetMax: number; localities: string[]; bedrooms: string[]; mustHaves: string[] };
 type Listing = { city?: string; country?: string; currency?: string; rent: number; locality: string; bedrooms: string; amenityEvidence?: AmenityEvidence[] };
 
+export const extractedHomeTypes = ["Private room", "Shared room", "Studio", "1 bedroom", "2 bedrooms", "other", "unknown"] as const;
+
+/** Classify the unit being offered, not the bedroom count of the shared home. */
+export function groundedHomeType(value: unknown, quote: unknown, markdown: string): string {
+  if (typeof value !== "string" || !extractedHomeTypes.some((type) => type === value) || value === "unknown" || value === "other") return "unknown";
+  if (typeof quote !== "string" || quote.trim().length < 3 || !normalizePlace(markdown).includes(normalizePlace(quote))) return "unknown";
+  return value;
+}
+
 /** Conservative aliases, never infer a private room from a whole apartment. */
 function roomType(value: string) {
   const normalized = normalizePlace(value);

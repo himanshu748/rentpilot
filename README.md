@@ -8,6 +8,8 @@ This repository is the working Convex All Gas Hackathon build.
 
 **Hackathon build log:** [hackathon.md](./hackathon.md)
 
+**Judge walkthrough and demo script:** [submission.md](./submission.md)
+
 ## What works
 
 - Visitors can set preferences anonymously. Live searches, AI drafts and inquiry sends require sign-in with an AgentMail email code; signing in claims the anonymous search onto the account.
@@ -30,7 +32,7 @@ This repository is the working Convex All Gas Hackathon build.
 - Anime.js transitions for pursuit entry and state progress, deferred until the tab is visible and skipped under reduced motion
 - Honest credential gates for Firecrawl discovery and AgentMail delivery
 - Signed-in, server-derived ownership and hourly account limits around paid Firecrawl, OpenAI and AgentMail calls
-- AgentMail reply-ingestion code stores the sender, timestamp and summary on the owned match, deduplicates events, and retries replies that arrive before the outbound thread reference. Production webhook registration and the full in-app reply loop remain unverified.
+- AgentMail reply ingestion stores the sender, timestamp and summary on the owned match, deduplicates events, and retries replies that arrive before the outbound thread reference. The production webhook and the full sample-listing-to-in-app-reply loop passed a live controlled test on September 5.
 - Keyboard-complete: skip link, focus-visible rings, Escape and focus return on the mobile evidence dialog
 
 ## Local setup
@@ -101,9 +103,11 @@ Register the AgentMail webhook at:
 https://your-deployment.convex.site/agentmail/webhook
 ```
 
-The deployed sender uses a least-privilege inbox-scoped key. That key cannot create
-webhooks, so production `message.received` webhook registration remains a pre-submission
-task; see the honest status in [hackathon.md](./hackathon.md).
+The deployed sender uses a least-privilege inbox-scoped key. The production
+`message.received` webhook is registered and its listing-linked reply flow is verified.
+For a new deployment, register its webhook separately with appropriately scoped setup
+access, set the matching signing secret, and revoke temporary setup credentials.
+See the current test evidence in [hackathon.md](./hackathon.md).
 
 OpenAI writes the inquiry drafts through Vercel AI Gateway. Ranking stays deterministic in Convex, so the model
 never decides which room is best, only how to ask about it.
@@ -164,17 +168,18 @@ npm run lint
 npx tsc --noEmit
 ```
 
-The 54 automated tests cover location and currency isolation, hard budget and amenity
+The 56 automated tests cover location and currency isolation, offered-unit extraction, hard budget and amenity
 gates, OpenAI request/response handling without fallback, sign-in delivery receipts,
 review-before-send UI behavior, and reply matching/idempotency. These use stubs at
 external-service boundaries and do not replace a live end-to-end integration test.
 
-The deployed first-visitor flow was checked at 1280, 768 and 375 pixel widths in an
-isolated Comet session: landing page, app navigation, preference validation and the
-sign-in dialog passed without console errors. Previous controlled tests confirmed
-email-code sign-in and mail delivery in both directions. The complete signed-in
-listing-to-draft-to-send-to-in-app-reply flow still needs to pass before the video
-claims it works end to end.
+The deployed first-visitor flow and signed-in phone/tablet/desktop layouts were checked
+in isolated Comet sessions, including 320, 375, 768 and 1280 pixel widths, without
+horizontal overflow or console errors. The complete signed-in production flow passed
+on September 5: Firecrawl read permitted fictional listings, OpenAI drafted an inquiry,
+the tester edited and confirmed it, AgentMail delivered it to a controlled inbox, and a
+real reply appeared on the same listing and survived reload. No real landlord was
+contacted. This proves the integration loop, not worldwide rental inventory.
 
 Run `npm run build` first. Next generates the route types that `layout.tsx` depends on into `.next/types`, so on a clean checkout `npx tsc --noEmit` fails until a build or `npm run dev` has created them.
 

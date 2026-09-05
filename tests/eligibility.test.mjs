@@ -11,9 +11,19 @@ function load(name, imports = {}) {
   return exports;
 }
 const location = load("location");
-const { eligibilityProblems, groundedAmenities } = load("eligibility", { "./location": location });
+const { eligibilityProblems, groundedAmenities, groundedHomeType } = load("eligibility", { "./location": location });
 const brief = { city: "Lucknow", country: "India", currency: "INR", budgetMin: 0, budgetMax: 8000, localities: ["Bithauli", "Bhitauli"], bedrooms: ["Private room"], mustHaves: ["Cooler", "Bed", "LPG cooking cylinder"] };
 const listing = { ...brief, rent: 8000, locality: "Bhitauli", bedrooms: "Private room", amenityEvidence: brief.mustHaves.map((requirement) => ({ requirement, status: "present", quote: `${requirement} included in rent.` })) };
+test("offered home type is grounded independently of the shared flat bedroom count", () => {
+  const page = "| Home type | Private room |\nPrivate room in a shared 3 BHK";
+  assert.equal(groundedHomeType("Private room", "Private room", page), "Private room");
+  assert.equal(groundedHomeType("1 bedroom", "Whole 1 BHK", "Whole 1 BHK available"), "1 bedroom");
+});
+test("unknown, numeric, or ungrounded home types never become private rooms", () => {
+  for (const value of ["unknown", "other", "1", 1, undefined]) assert.equal(groundedHomeType(value, "Private room", "Private room"), "unknown");
+  assert.equal(groundedHomeType("Private room", "", "Private room"), "unknown");
+  assert.equal(groundedHomeType("Private room", "Private room", "Whole apartment"), "unknown");
+});
 test("Bithauli room at exactly INR8000 with every inclusion is eligible", () => assert.equal(eligibilityProblems(listing, brief).length, 0));
 test("budget is a hard cap, including one paisa over", () => {
   for (const rent of [8000.01, 9600, 20000, NaN]) assert.match(eligibilityProblems({ ...listing, rent }, brief).join(), /hard budget/);

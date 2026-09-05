@@ -16,6 +16,10 @@ Once a match has a published contact, OpenAI drafts an inquiry. You can edit it 
 
 The complete flow has passed on the deployed app using clearly labelled fictional listings and controlled inboxes. Live inventory depends on source permissions and coverage. RentPilot does not verify a landlord's identity, guarantee availability or measure distance from a neighbourhood name.
 
+I used OpenAI Codex throughout development to implement features, debug integrations and run end-to-end checks. Codex helped build the app; OpenAI gpt-4o-mini writes inquiry drafts inside the app.
+
+**Vibe Apps tags:** `convex`, `AllGasHackathon`, `OpenAI`, `Firecrawl`, `codex`, `AgentMail`.
+
 ## Public links
 
 - App: https://ceaseless-pigeon-981.convex.site
@@ -81,7 +85,7 @@ Choose one platform. These are drafts, not evidence of publication.
 
 1. I built RentPilot for room searches with actual requirements: area, budget, bed, cooler, cooking cylinder. It keeps source evidence, inquiries and replies together. Built for All Gas with @convex @OpenAI @firecrawl @agentmail.
 
-2. Firecrawl finds leads and extracts permitted pages. Convex applies hard filters and scores matches. OpenAI drafts an inquiry; you edit and confirm before AgentMail sends. A reply updates the same listing. The full flow passed with fictional listings and controlled inboxes.
+2. I used #Codex to build, debug and test RentPilot. Firecrawl finds leads; Convex checks evidence; OpenAI drafts inquiries; AgentMail sends after approval and brings replies back. The full loop passed with fictional listings and controlled inboxes.
 
 3. Live: https://ceaseless-pigeon-981.convex.site
 Code: https://github.com/himanshu748/rentpilot
@@ -96,6 +100,8 @@ RentPilot keeps those requirements attached to the search. Firecrawl finds leads
 The full deployed flow passed with clearly labelled fictional listings and controlled inboxes. You can choose your city and currency, but live inventory depends on source permissions and coverage. Missing details do not count as matches.
 
 Built for the Convex All Gas Hackathon with Convex, OpenAI, Firecrawl and AgentMail. [Select the four official company mentions in the LinkedIn composer before publishing.]
+
+I used OpenAI Codex throughout the build for implementation, debugging and end-to-end checks. #Codex #AllGasHackathon
 
 Try it: https://ceaseless-pigeon-981.convex.site
 Code: https://github.com/himanshu748/rentpilot

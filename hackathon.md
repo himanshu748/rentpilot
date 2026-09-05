@@ -42,6 +42,10 @@ OpenAI writes the inquiry from only the listing evidence and the renter's record
 
 OpenAI inference uses Vercel AI Gateway with `AI_GATEWAY_API_KEY` stored only on Convex. The model is pinned to `openai/gpt-4o-mini` and the provider allowlist to `openai`, with no fallback. The signed-in production flow generated a real draft on September 5, 2026. The tester edited it, reviewed the saved message, and explicitly confirmed the send. Vercel supplies inference access only; it does not host the app.
 
+### Codex (development)
+
+I used OpenAI Codex for feature implementation, integration debugging, automated tests, deployed end-to-end checks and submission preparation. Codex is a development tool here. The app's inquiry-writing feature uses OpenAI gpt-4o-mini as described above. The submission includes the `codex` tag.
+
 ### AgentMail
 
 AgentMail owns the product inbox. It sends passwordless sign-in codes and approved listing inquiries. Convex stores a stable per-draft idempotency key, tracks AgentMail's outbound lifecycle, and folds delivery status into the pursuit. Incoming messages are matched back to a pursuit by AgentMail thread ID and ingested idempotently.

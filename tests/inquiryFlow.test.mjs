@@ -9,18 +9,19 @@ const require = createRequire(import.meta.url);
 const source = fs.readFileSync(new URL("../src/components/rentpilot-cockpit.tsx", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
 
-function harness(overrides = {}, saveError = false) {
+function harness(overrides = {}, saveError = false, authenticated = true) {
   const state = [], refs = [];
   let cursor = 0, refCursor = 0;
-  const calls = { saved: [], sent: [] };
+  const calls = { saved: [], sent: [], queries: [] };
   const pursuit = { title: "Test room", caseId: "TEST", status: "drafted", score: 90, confidence: 80, scoreBreakdown: [], source: "Permitted sample", sourceNote: "Test only", contact: "lister@example.com", missing: [], draftSubject: "Room inquiry", draftBody: "Please confirm the rent, cooler, bed and cooking cylinder.", draftedByModel: "openai/test", sendStatus: "draft", threadId: "test-thread", ...overrides };
   const exports = {};
   const react = require("react");
-  vm.runInNewContext(`${compiled}\nexports.TestPanel = EvidencePanel;`, {
+  vm.runInNewContext(`${compiled}\nexports.TestPanel = EvidencePanel; exports.TestRow = PursuitRow;`, {
     exports, crypto: { randomUUID: () => "test-request" },
     require: (name) => {
       if (name === "react") return { ...react, useState: (initial) => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; }, useRef: initial => { const i = refCursor++; return refs[i] ??= { current: initial }; }, useEffect: () => {} };
-      if (name === "convex/react") return { useQuery: () => null };
+      if (name === "convex/react") return { useConvexAuth: () => ({ isAuthenticated: authenticated }), useQuery: (_, args) => { calls.queries.push(args); return null; } };
+      if (name === "../../convex/location") return { formatMoney: value => String(value) };
       if (name === "sonner") return { toast: { success() {}, error() {} } };
       if (name === "@/lib/utils") return { cn: (...values) => values.filter(Boolean).join(" ") };
       if (name === "@/lib/pursuit") return {};
@@ -36,7 +37,7 @@ function harness(overrides = {}, saveError = false) {
       onSend: async (_, requestId) => { calls.sent.push(requestId); }, onSyncDelivery: async () => {}, onWriteDraft: async () => ({ subject: "New inquiry", body: "Please confirm all listed amenities are included in the rent.", model: "openai/test" }),
     });
   }
-  return { render, calls };
+  return { render, calls, row: () => exports.TestRow({ pursuit, selected: false, onSelect() {} }) };
 }
 function nodes(tree) {
   if (!tree || typeof tree !== "object") return [];
@@ -88,3 +89,20 @@ for (const [label, overrides] of [["missing email", { contact: null }], ["demo",
     assert.equal(action.props.disabled, true);
   });
 }
+
+test("signed-out evidence panel skips the authenticated delivery query", () => {
+  const h = harness({ outboundId: "outbound" }, false, false);
+  h.render();
+  assert.equal(h.calls.queries.at(-1), "skip");
+});
+test("signed-in evidence panel still subscribes to its delivery status", () => {
+  const h = harness({ outboundId: "outbound" });
+  h.render();
+  assert.equal(h.calls.queries.at(-1).threadId, "test-thread");
+});
+test("sample and demo rows disclose fictional inventory before opening details", () => {
+  for (const flag of ["isSample", "isDemo"]) {
+    assert.match(text(harness({ [flag]: true }).row()), /Test listing · not a real vacancy/);
+  }
+  assert.doesNotMatch(text(harness().row()), /Test listing/);
+});

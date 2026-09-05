@@ -180,6 +180,12 @@ main:focus { outline: none; }
 .pursuit-copy { display: block; min-width: 0; padding-left: 15px; }
 .pursuit-title-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pursuit-title { overflow: hidden; margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -0.025em; white-space: nowrap; text-overflow: ellipsis; }
+.sample-listing-label { display: block; margin-top: 6px; color: var(--ink); font: 650 11px var(--mono); }
+.search-recovery { max-width: 640px; margin: 10vh auto; padding: 24px; }
+.search-recovery h1 { margin-bottom: 12px; font-size: 26px; }
+.search-recovery p { margin-bottom: 20px; }
+.search-recovery a { display: inline-flex; align-items: center; min-height: 44px; margin-left: 16px; text-decoration: underline; }
+.search-recovery .secondary-action { min-height: 44px; }
 .pursuit-place { display: flex; align-items: center; gap: 5px; margin: 7px 0 10px; color: var(--ink-muted); font-size: 12px; }
 .pursuit-place > span { color: #8b8579; }
 .status-tag { flex: 0 0 auto; padding: 4px 7px; border-radius: 4px; font: 650 10px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }

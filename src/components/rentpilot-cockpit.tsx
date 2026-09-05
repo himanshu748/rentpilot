@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, stagger } from "animejs";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
@@ -326,6 +326,7 @@ function PursuitRow({ pursuit, selected, onSelect }: { pursuit: Pursuit; selecte
         <span className="score-cell"><span>{pursuit.score}</span><small>match</small></span>
         <span className="pursuit-copy">
           <span className="pursuit-title-line"><span className="pursuit-title">{pursuit.title}</span><StatusTag status={pursuit.status} /></span>
+          {(pursuit.isSample || pursuit.isDemo) && <span className="sample-listing-label">Test listing · not a real vacancy</span>}
           <span className="pursuit-place"><MapPin size={13} aria-hidden="true" />{pursuit.locality} <span aria-hidden="true">·</span> {pursuit.kind}</span>
           <span className="evidence-strip">
             <span>{formatMoney(pursuit.rent, pursuit.currency)}</span>
@@ -420,6 +421,7 @@ function EvidencePanel({
   onSyncDelivery: (pursuit: Pursuit) => Promise<void>;
   onWriteDraft: (pursuit: Pursuit) => Promise<{ subject: string; body: string; model: string }>;
 }) {
+  const { isAuthenticated } = useConvexAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -434,7 +436,7 @@ function EvidencePanel({
 
   const delivery = useQuery(
     api.email.deliveryStatus,
-    pursuit.outboundId && pursuit.threadId
+    isAuthenticated && pursuit.outboundId && pursuit.threadId
       ? { threadId: pursuit.threadId }
       : "skip",
   );

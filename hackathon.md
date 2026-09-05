@@ -8,7 +8,7 @@ RentPilot searches for rooms using a renter's city, preferred areas, budget, hom
 - Pursuit cockpit: [https://ceaseless-pigeon-981.convex.site/app](https://ceaseless-pigeon-981.convex.site/app)
 - Permitted sample source: [https://ceaseless-pigeon-981.convex.site/sample-source](https://ceaseless-pigeon-981.convex.site/sample-source)
 - Public source: [https://github.com/himanshu748/rentpilot](https://github.com/himanshu748/rentpilot)
-- Demo video: [2:29 deployed-product walkthrough on X](https://x.com/jhahimanshu653/status/2096278313539092555), with live integrations and clearly identified test listings
+- Demo video: [2:29 deployed-product walkthrough on YouTube](https://youtu.be/TjNKa9jboJo), with live integrations and clearly identified test listings
 - Sponsor showcase: [X post](https://x.com/jhahimanshu653/status/2096278313539092555), tagging Convex, OpenAI, Firecrawl, AgentMail and Wayne Sutton, with Codex development credit
 - Judge walkthrough and demo script: [submission.md](./submission.md)
 - Real-ad research: [Bithauli/Bhitauli evidence and gaps](./docs/inventory-evidence.md); ads found, no exact-match vacancy or approved real source established
@@ -86,12 +86,14 @@ The production sender inbox and least-privilege API key are configured. The `mes
 - Unauthenticated attempts to claim a search or guess a `user:` owner key are rejected or restricted to shared data.
 - Firecrawl production connectivity probe returns a successful live response.
 - September 5 production checks: Firecrawl returns HTTP 200; integration-status reports configured AgentMail, Firecrawl, OpenAI gateway and sample contact; the webhook rejects an unsigned empty request with HTTP 401. Configuration flags alone do not prove delivery or model execution.
-- `npm test` — 56 tests pass, including offered-unit extraction and six reply-ingestion regressions. External services are stubbed in the automated suite.
+- `npm test` — 59 tests pass, including offered-unit extraction, six reply-ingestion regressions, visible sample labels and authenticated delivery subscriptions. External services are stubbed in the automated suite.
 - Deployed first-visitor checks in isolated Comet at 1280, 768 and 375 pixel widths pass: meaningful page content, no overflow, preference validation, sign-in dialog, and no console errors. These checks send no email and leave the user's saved preferences unchanged.
 - Full production sample extraction → OpenAI draft → human-approved inquiry → reply shown on its match: **passed September 5**. This used live provider calls and a normally authenticated controlled test account. The listing showed AgentMail delivery as sent and its stage as Replied; data remained after reload. Browser console errors: none.
 - The user's real Bithauli/Bhitauli brief remains INR 8,000 maximum with cooler, bed and LPG cooking cylinder required. No evidence-backed room satisfying that brief was established by these tests. Fictional fixtures prove integration behavior, not supply in that market.
 
 ## Submission checklist
+
+September 5 final review: Claude independently audited the current source. Added visible fictional-listing labels to queue rows, removed the obsolete README seed step, skipped authenticated delivery subscriptions after sign-out, and added a route error recovery screen. The full test suite, production build and typecheck pass. The demo predates these final presentation fixes; the recorded integration flow is unchanged.
 
 - [x] Verify Luma registration (registration-confirmation email dated August 26, checked September 5)
 - [x] Participant confirms personal eligibility under the official rules (September 5)

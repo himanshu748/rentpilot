@@ -43,11 +43,10 @@ CONVEX_AGENT_MODE=anonymous npx convex dev
 npm run dev
 ```
 
-In another terminal, seed the labeled demo workspace once:
-
-```bash
-npx convex run seed:demo
-```
+New workspaces start empty. Save your search preferences in `/app`. With the
+production integrations configured, sign in and use the clearly labelled sample
+source to test the full extraction-to-reply flow. The legacy `seed:demo` command
+does not populate the current account-owned queue and is not a setup step.
 
 Open `http://localhost:3000` for the landing page, or go straight to the product at
 `http://localhost:3000/app`.

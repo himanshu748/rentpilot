@@ -9,6 +9,7 @@ RentPilot searches for rooms using a renter's city, preferred areas, budget, hom
 - Permitted sample source: [https://ceaseless-pigeon-981.convex.site/sample-source](https://ceaseless-pigeon-981.convex.site/sample-source)
 - Public source: [https://github.com/himanshu748/rentpilot](https://github.com/himanshu748/rentpilot)
 - Demo video: pending recording of the final deployed loop
+- Community showcase: [Convex Discord show-and-tell](https://discord.com/channels/1019350475847499849/1141187289024839760/threads/1545677744849817620), posted September 5 with the live app, repo, screenshot and current limitations. This does not replace the required X/LinkedIn post.
 
 The app was started on August 31, 2026. The first commit is `93bf207`, after the August 25 eligibility date.
 
@@ -74,6 +75,7 @@ The production sender inbox and least-privilege API key are configured. Registra
 - Anonymous sessions see only their own rows plus the explicitly shared demo rows.
 - Unauthenticated attempts to claim a search or guess a `user:` owner key are rejected or restricted to shared data.
 - Firecrawl production connectivity probe returns a successful live response.
+- September 5 production checks: Firecrawl returns HTTP 200; integration-status reports configured AgentMail, Firecrawl, OpenAI gateway and sample contact; the webhook rejects an unsigned empty request with HTTP 401. Configuration flags alone do not prove delivery or model execution.
 - `npm test` — 54 tests pass, including six reply-ingestion regressions. External services are stubbed in the automated suite.
 - Deployed first-visitor checks in isolated Comet at 1280, 768 and 375 pixel widths pass: meaningful page content, no overflow, preference validation, sign-in dialog, and no console errors. These checks send no email and leave the user's saved preferences unchanged.
 - Full production sample extraction → OpenAI draft → human-approved inquiry → reply shown on its match: **not yet verified**. Do not present separate transport probes as this end-to-end result.

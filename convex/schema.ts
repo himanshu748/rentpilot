@@ -32,12 +32,17 @@ export const searchLead = v.object({
   note: v.string(),
 });
 
+export const searchPhase = v.union(v.literal("searching"), v.literal("checking"), v.literal("complete"), v.literal("failed"));
+
 export default defineSchema({
   ...authTables,
 
   searchRuns: defineTable({
     owner: v.string(), criteriaId: v.id("criteria"), query: v.string(),
     results: v.array(searchLead), searchedAt: v.number(),
+    phase: v.optional(searchPhase),
+    queries: v.optional(v.array(v.string())),
+    error: v.optional(v.string()),
   }).index("by_owner_and_criteria", ["owner", "criteriaId"]),
 
   sources: defineTable({

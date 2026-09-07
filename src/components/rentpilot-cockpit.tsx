@@ -46,6 +46,7 @@ import {
   type SendStatus,
 } from "@/lib/pursuit";
 import { SignInDialog } from "@/components/sign-in-dialog";
+import { SearchDiscoveryPanel } from "@/components/search-discovery-panel";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 import { currencies, formatMoney, validCurrency } from "../../convex/location";
@@ -1099,22 +1100,7 @@ export function RentPilotCockpit() {
               <span className="action-label">{searchingWeb ? "Searching the web…" : hasSearch ? "Find live leads" : "Choose your location"}</span>
             </button>
           </div>
-          {hasSearch && <section className="live-leads" aria-labelledby="live-leads-title" aria-busy={searchingWeb}>
-            <div className="section-title-row"><h2 id="live-leads-title">Web leads <span className="eyebrow">Links to investigate, not verified rooms</span></h2><Search size={16} aria-hidden="true" /></div>
-            <p>Open these links to investigate each room. A listing enters your matches only when an approved source supports every requirement.</p>
-            <details className="verification-guide"><summary>How listing checks and email work</summary><dl><div><dt>Unverified lead</dt><dd>A search snippet only. Open the source to check details or contact the lister there. RentPilot does not guess email addresses.</dd></div><div><dt>Evidence-backed match</dt><dd>A permitted page supports your budget, area, room type and every must-have. Landlord identity, safety and current availability remain unverified.</dd></div><div><dt>Email-ready</dt><dd>A match also needs a source-listed email and your sign-in. Choose Draft inquiry, edit if needed, then Review &amp; send and Confirm &amp; send email. Missing contact details keep email disabled.</dd></div></dl><p>RentPilot has not inspected these properties. Confirm availability and inclusions with the lister. Sample listings remain fictional.</p></details>
-            <p className="lead-location-note">Locality matching: {activeCriteria.localities.join(" / ")}. No distance radius is verified.</p>
-            {searchingWeb && <p role="status">Finding source links and checking permitted pages…</p>}
-            {webSearchError && <div role="alert" className="field-error"><p>{webSearchError}</p><button className="secondary-action" type="button" onClick={findLiveLeads} disabled={searchingWeb}>Retry live search</button></div>}
-            {latestSearch ? <>
-              <details><summary>Search query and time</summary><p>{latestSearch.query}</p><time dateTime={new Date(latestSearch.searchedAt).toISOString()}>{new Date(latestSearch.searchedAt).toLocaleString()}</time></details>
-              {latestSearch.results.length ? <ul className="web-lead-list">{latestSearch.results.map((lead) => <li key={lead.url}>
-                <span className="eyebrow">{lead.status === "matched" ? "Evidence-backed match" : lead.status === "excluded" ? "Not a match / check incomplete" : lead.status === "blocked" ? "Source blocked · unverified" : "Unverified lead"} · {new URL(lead.url).hostname}</span>
-                <h3><a href={lead.url} target="_blank" rel="noopener noreferrer">{lead.title}<ArrowUpRight size={15} aria-hidden="true" /><span className="sr-only"> (opens source in a new tab)</span></a></h3>
-                <p>{lead.description}</p><small>{lead.note}</small>
-              </li>)}</ul> : <p>No web leads found for this brief. Try another locality or edit your requirements; nothing was substituted.</p>}
-            </> : !searchingWeb && <p>No live search yet. Choose “Find live leads” to start.</p>}
-          </section>}
+          {hasSearch && <SearchDiscoveryPanel brief={activeCriteria} run={latestSearch} searching={searchingWeb} error={webSearchError} onSearch={findLiveLeads} onEdit={() => setCriteriaOpen(true)} />}
           <div className="toolbar">
             <label className="search-box"><Search size={16} aria-hidden="true" /><span className="sr-only">Filter matches</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter matches by area or title" /></label>
             <div className="filter-wrap"><Filter size={14} aria-hidden="true" /><label htmlFor="status-filter" className="sr-only">Filter by status</label><select id="status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | PursuitStatus)}><option value="all">All stages</option>{statusOrder.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}<option value="closed">Closed</option></select><ChevronDown size={14} aria-hidden="true" /></div>

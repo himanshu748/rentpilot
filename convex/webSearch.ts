@@ -3,18 +3,24 @@ import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { action, internalAction, internalMutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { searchLead } from "./schema";
+import { searchLead, searchPhase } from "./schema";
 import { ownerKey, requireUserKey } from "./session";
 import { normalizePlace } from "./location";
 
 const firecrawl = new FirecrawlClient(components.firecrawl);
 type Lead = typeof searchLead.type;
-const result = v.object({ query: v.string(), results: v.array(searchLead), searchedAt: v.number() });
+const result = v.object({ query: v.string(), results: v.array(searchLead), searchedAt: v.number(), phase: v.optional(searchPhase), queries: v.optional(v.array(v.string())), error: v.optional(v.string()) });
 
 /** Search engines return leads, NOT verified rent, availability, or amenities. */
 export function rentalQuery(brief: { city: string; country: string; currency: string; areas: string[]; bedrooms: string[]; budgetMax: number; mustHaves: string[] }) {
   // Do not include contact details, auth data, or the private session identifier.
-  return `${brief.bedrooms.slice(0, 2).join(" or ")} rent ${brief.areas.slice(0, 4).join(" or ")} ${brief.city} ${brief.country} under ${brief.budgetMax} ${brief.currency} per month ${brief.mustHaves.slice(0, 5).join(" ")}`;
+  return `${brief.bedrooms.slice(0, 2).join(" or ")} rent ${brief.areas.slice(0, 4).join(" or ")} ${brief.city} ${brief.country} under ${brief.budgetMax} ${brief.currency} per month ${brief.mustHaves.slice(0, 5).join(" ")}`.trim();
+}
+
+/** Broader discovery only; the eligibility gates still require every must-have. */
+export function rentalQueries(brief: Parameters<typeof rentalQuery>[0]) {
+  const broad = `${brief.bedrooms.slice(0, 2).join(" or ")} rent ${brief.areas.slice(0, 4).join(" or ")} ${brief.city} ${brief.country} under ${brief.budgetMax} ${brief.currency} per month`;
+  return [...new Set([broad, rentalQuery(brief)])];
 }
 
 export function safeLeadUrl(raw: unknown): string | null {
@@ -39,18 +45,36 @@ export const latest = query({
     const criteria = await ctx.db.query("criteria").withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner)).order("desc").first();
     if (!criteria) return null;
     const run = await ctx.db.query("searchRuns").withIndex("by_owner_and_criteria", (q) => q.eq("owner", owner).eq("criteriaId", criteria._id)).order("desc").first();
-    return run ? { query: run.query, results: run.results, searchedAt: run.searchedAt } : null;
+    if (!run) return null;
+    const interrupted = (run.phase === "searching" || run.phase === "checking") && Date.now() - run.searchedAt > 5 * 60_000;
+    return { query: run.query, results: run.results, searchedAt: run.searchedAt, queries: run.queries,
+      phase: interrupted ? "failed" as const : run.phase,
+      error: interrupted ? "The search stopped updating. Start a new search; your requirements are unchanged." : run.error };
+  },
+});
+
+export const begin = internalMutation({
+  args: { owner: v.string(), criteriaId: v.id("criteria"), query: v.string(), queries: v.array(v.string()) },
+  returns: v.id("searchRuns"),
+  handler: async (ctx, args) => {
+    const criteria = await ctx.db.get(args.criteriaId);
+    if (!criteria || criteria.sessionId !== args.owner) throw new Error("Search preferences are not available for this account.");
+    const previous = await ctx.db.query("searchRuns").withIndex("by_owner_and_criteria", q => q.eq("owner", args.owner).eq("criteriaId", args.criteriaId)).order("desc").first();
+    if (previous && (previous.phase === "searching" || previous.phase === "checking") && Date.now() - previous.searchedAt < 5 * 60_000) throw new Error("A search is already running for this brief. Results will update here.");
+    return await ctx.db.insert("searchRuns", { ...args, results: [], searchedAt: Date.now(), phase: "searching" });
   },
 });
 
 export const save = internalMutation({
-  args: { owner: v.string(), criteriaId: v.id("criteria"), query: v.string(), results: v.array(searchLead) },
+  args: { owner: v.string(), criteriaId: v.id("criteria"), query: v.string(), results: v.array(searchLead), runId: v.optional(v.id("searchRuns")), phase: v.optional(searchPhase), queries: v.optional(v.array(v.string())), error: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
     const criteria = await ctx.db.query("criteria").withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.owner)).order("desc").first();
     if (!criteria || criteria._id !== args.criteriaId) throw new Error("Your search changed. Search again for the new brief.");
-    const previous = await ctx.db.query("searchRuns").withIndex("by_owner_and_criteria", (q) => q.eq("owner", args.owner).eq("criteriaId", args.criteriaId)).first();
-    const fields = { ...args, results: args.results.slice(0, 8), searchedAt: Date.now() };
+    const { runId, ...values } = args;
+    const previous = runId ? await ctx.db.get(runId) : await ctx.db.query("searchRuns").withIndex("by_owner_and_criteria", (q) => q.eq("owner", args.owner).eq("criteriaId", args.criteriaId)).order("desc").first();
+    if (runId && (!previous || previous.owner !== args.owner || previous.criteriaId !== args.criteriaId)) throw new Error("Search run does not belong to this brief.");
+    const fields = { ...values, results: args.results.slice(0, 12), searchedAt: Date.now() };
     if (previous) await ctx.db.patch(previous._id, fields);
     else await ctx.db.insert("searchRuns", fields);
     return null;
@@ -63,50 +87,69 @@ export const searchInternal = internalAction({
   handler: async (ctx, args): Promise<typeof result.type> => {
     const brief = await ctx.runQuery(internal.discovery.getSearchForDiscovery, { owner: args.owner });
     const queryText = rentalQuery(brief);
-    await ctx.runMutation(internal.rateLimits.reserve, { owner: args.owner, capability: "firecrawl", cost: 2 });
-    // Intentionally NO scrapeOptions: unapproved result pages are not scraped.
-    const response = await firecrawl.search(ctx, queryText, { sources: ["web"], limit: 8, location: `${brief.city}, ${brief.country}`, timeout: 30000 });
+    const queries = rentalQueries(brief);
+    const runId: Id<"searchRuns"> = await ctx.runMutation(internal.webSearch.begin, { owner: args.owner, criteriaId: brief.id, query: queryText, queries });
     const results: Lead[] = [];
-    const seen = new Set<string>();
-    let extractedCount = 0;
-    // Prioritize explicit area mentions, without pretending a snippet proves distance.
-    const relevance = (item: unknown) => {
-      const record = item as Record<string, unknown>;
-      return brief.areas.some((area: string) => normalizePlace(`${record.title ?? ""} ${record.description ?? ""}`).includes(normalizePlace(area))) ? 1 : 0;
+    const save = async (phase: "checking" | "complete" | "failed", error?: string) => {
+      await ctx.runMutation(internal.webSearch.save, { owner: args.owner, criteriaId: brief.id, query: queryText, results, queries, runId, phase, ...(error ? { error } : {}) });
     };
-    const candidates = [...(response.web ?? [])].sort((a, b) => relevance(b) - relevance(a));
-    for (const item of candidates) {
-      const url = safeLeadUrl(item.url);
-      if (!url || seen.has(url) || results.length >= 8) continue;
-      seen.add(url);
-      const host = new URL(url).hostname;
-      if (host === new URL(process.env.CONVEX_SITE_URL ?? "https://example.invalid").hostname) continue;
-      const source: { _id: Id<"sources">; domain: string; permissionStatus: "approved" | "review_required" | "blocked" } | null = await ctx.runQuery(internal.discovery.getSourceByDomain, { domain: host.replace(/^www\./, "") });
-      const lead: Lead = {
-        url,
-        title: typeof item.title === "string" ? item.title.slice(0, 220) : host,
-        description: typeof item.description === "string" ? item.description.slice(0, 700) : "No search snippet available.",
-        status: source?.permissionStatus === "blocked" ? "blocked" : "permission_required",
-        note: source?.permissionStatus === "blocked" ? "Source has declined automated extraction. Open manually; no page was scraped." : "Search snippet only. Price, amenities, availability and distance are unverified. Source permission is required for automated extraction.",
+    try {
+      await ctx.runMutation(internal.rateLimits.reserve, { owner: args.owner, capability: "firecrawl", cost: 2 * queries.length });
+      // Intentionally NO scrapeOptions: unapproved result pages are not scraped.
+      const responses = await Promise.all(queries.map(query => firecrawl.search(ctx, query, { sources: ["web"], limit: 8, location: `${brief.city}, ${brief.country}`, timeout: 30000 })));
+      const seen = new Set<string>();
+      let extractedCount = 0;
+      // Prioritize explicit area mentions, without pretending a snippet proves distance.
+      const relevance = (item: unknown) => {
+        const record = item as Record<string, unknown>;
+        return brief.areas.some((area: string) => normalizePlace(`${record.title ?? ""} ${record.description ?? ""}`).includes(normalizePlace(area))) ? 1 : 0;
       };
-      if (source?.permissionStatus === "approved" && extractedCount < 3) {
-        extractedCount++;
-        await ctx.runMutation(internal.rateLimits.reserve, { owner: args.owner, capability: "firecrawl" });
-        try {
-          await ctx.runAction(internal.discovery.scrapeApprovedListingInternal, { owner: args.owner, sourceId: source._id, url, isSample: false });
-          lead.status = "matched";
-          lead.note = "Source evidence meets your hard budget, selected locality, room type and must-haves. Confirm current availability with the lister.";
-        } catch (error) {
-          lead.status = "excluded";
-          lead.note = error instanceof Error ? error.message.slice(0, 900) : "Could not verify this listing. It was not added as a match.";
+      const candidates = responses.flatMap(response => response.web ?? []).sort((a, b) => relevance(b) - relevance(a));
+      const approved: { lead: Lead; sourceId: Id<"sources"> }[] = [];
+      for (const item of candidates) {
+        const url = safeLeadUrl(item.url);
+        if (!url || seen.has(url) || results.length >= 12) continue;
+        seen.add(url);
+        const host = new URL(url).hostname;
+        if (host === new URL(process.env.CONVEX_SITE_URL ?? "https://example.invalid").hostname) continue;
+        const source: { _id: Id<"sources">; domain: string; permissionStatus: "approved" | "review_required" | "blocked" } | null = await ctx.runQuery(internal.discovery.getSourceByDomain, { domain: host.replace(/^www\./, "") });
+        const lead: Lead = {
+          url,
+          title: typeof item.title === "string" ? item.title.slice(0, 220) : host,
+          description: typeof item.description === "string" ? item.description.slice(0, 700) : "No search snippet available.",
+          status: source?.permissionStatus === "blocked" ? "blocked" : "permission_required",
+          note: source?.permissionStatus === "blocked" ? "Source has declined automated extraction. Open manually; no page was scraped." : "Search snippet only. Price, amenities, availability and distance are unverified. Source permission is required for automated extraction.",
+        };
+        if (source?.permissionStatus === "approved") {
+          lead.note = "Waiting for a source-evidence check. This is not a match yet.";
+          approved.push({ lead, sourceId: source._id });
         }
-      } else if (source?.permissionStatus === "approved") {
-        lead.note = "Not verified: this search checks at most three approved-source pages. Open the source to review this lead.";
+        results.push(lead);
       }
-      results.push(lead);
+      await save("checking");
+      for (const { lead, sourceId } of approved) {
+        if (extractedCount < 3) {
+          extractedCount++;
+          await ctx.runMutation(internal.rateLimits.reserve, { owner: args.owner, capability: "firecrawl" });
+          try {
+            await ctx.runAction(internal.discovery.scrapeApprovedListingInternal, { owner: args.owner, sourceId, url: lead.url, isSample: false });
+            lead.status = "matched";
+            lead.note = "Source evidence meets your hard budget, selected locality, room type and must-haves. Confirm current availability with the lister.";
+          } catch (error) {
+            lead.status = "excluded";
+            lead.note = error instanceof Error ? error.message.slice(0, 900) : "Could not verify this listing. It was not added as a match.";
+          }
+        } else {
+          lead.note = "Not verified: this search checks at most three approved-source pages. Open the source to review this lead.";
+        }
+        await save("checking");
+      }
+      await save("complete");
+      return { query: queryText, results, searchedAt: Date.now(), queries, phase: "complete" };
+    } catch (error) {
+      try { await save("failed", "Search could not finish. Any links below remain available; retry to run all checks."); } catch { /* A changed brief must not receive an old run's result. */ }
+      throw error;
     }
-    await ctx.runMutation(internal.webSearch.save, { owner: args.owner, criteriaId: brief.id, query: queryText, results });
-    return { query: queryText, results, searchedAt: Date.now() };
   },
 });
 

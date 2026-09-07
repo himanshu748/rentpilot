@@ -108,6 +108,10 @@ main:focus { outline: none; }
 .account-chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 6px 0 11px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 9px; }
 .account-email { max-width: 168px; overflow: hidden; color: var(--ink-muted); font: 600 11px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 .signin-dialog { width: min(460px, calc(100vw - 32px)); }
+.signin-dialog .signin-recovery { min-height: 44px; width: 100%; }
+.signin-notice { color: var(--ink-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.signin-dialog .form-field > small { font-size: 12px; overflow-wrap: anywhere; }
+.signin-dialog button:disabled { opacity: 0.62; cursor: not-allowed; }
 .mobile-menu-button, .mobile-menu { display: none; }
 
 .workspace-grid { display: grid; grid-template-columns: 248px minmax(480px, 1fr) minmax(360px, 410px); max-width: 1600px; min-height: calc(100vh - 64px); margin: 0 auto; border-left: 1px solid var(--hairline); border-right: 1px solid var(--hairline); background: var(--surface); box-shadow: var(--shadow-soft); }

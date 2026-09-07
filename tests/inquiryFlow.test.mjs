@@ -16,7 +16,7 @@ function harness(overrides = {}, saveError = false, authenticated = true) {
   const pursuit = { title: "Test room", caseId: "TEST", status: "drafted", score: 90, confidence: 80, scoreBreakdown: [], source: "Permitted sample", sourceNote: "Test only", contact: "lister@example.com", missing: [], draftSubject: "Room inquiry", draftBody: "Please confirm the rent, cooler, bed and cooking cylinder.", draftedByModel: "openai/test", sendStatus: "draft", threadId: "test-thread", ...overrides };
   const exports = {};
   const react = require("react");
-  vm.runInNewContext(`${compiled}\nexports.TestPanel = EvidencePanel; exports.TestRow = PursuitRow;`, {
+  vm.runInNewContext(`${compiled}\nexports.TestPanel = EvidencePanel; exports.TestRow = PursuitRow; exports.selectVisible = selectVisiblePursuit;`, {
     exports, crypto: { randomUUID: () => "test-request" },
     require: (name) => {
       if (name === "react") return { ...react, useState: (initial) => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; }, useRef: initial => { const i = refCursor++; return refs[i] ??= { current: initial }; }, useEffect: () => {} };
@@ -37,7 +37,7 @@ function harness(overrides = {}, saveError = false, authenticated = true) {
       onSend: async (_, requestId) => { calls.sent.push(requestId); }, onSyncDelivery: async () => {}, onWriteDraft: async () => ({ subject: "New inquiry", body: "Please confirm all listed amenities are included in the rent.", model: "openai/test" }),
     });
   }
-  return { render, calls, row: () => exports.TestRow({ pursuit, selected: false, onSelect() {} }) };
+  return { render, calls, selectVisible: exports.selectVisible, row: () => exports.TestRow({ pursuit, selected: false, onSelect() {} }) };
 }
 function nodes(tree) {
   if (!tree || typeof tree !== "object") return [];
@@ -105,4 +105,17 @@ test("sample and demo rows disclose fictional inventory before opening details",
     assert.match(text(harness({ [flag]: true }).row()), /Test listing · not a real vacancy/);
   }
   assert.doesNotMatch(text(harness().row()), /Test listing/);
+});
+
+test("filtering out a selected match removes its inquiry from the detail panel", () => {
+  const h = harness();
+  const visible = [{ id: "room-b" }];
+  assert.equal(h.selectVisible(visible, "room-a"), visible[0]);
+  assert.equal(h.selectVisible([], "room-a"), null);
+});
+
+test("a selected match stays selected while it remains in filtered results", () => {
+  const h = harness();
+  const visible = [{ id: "room-a" }, { id: "room-b" }];
+  assert.equal(h.selectVisible(visible, "room-b"), visible[1]);
 });

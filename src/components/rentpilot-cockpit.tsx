@@ -662,6 +662,10 @@ function EmptyEvidencePanel({ city, onEditCriteria }: { city: string; onEditCrit
   );
 }
 
+function selectVisiblePursuit(pursuits: Pursuit[], selectedId: string | null) {
+  return pursuits.find((pursuit) => pursuit.id === selectedId) ?? pursuits[0] ?? null;
+}
+
 export function RentPilotCockpit() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [criteriaOpen, setCriteriaOpen] = useState(false);
@@ -801,8 +805,7 @@ export function RentPilotCockpit() {
     });
   }, [pursuits, query, statusFilter]);
 
-  const selected =
-    pursuits.find((pursuit) => pursuit.id === selectedId) ?? visiblePursuits[0] ?? pursuits[0] ?? null;
+  const selected = selectVisiblePursuit(visiblePursuits, selectedId);
 
   const visibleActivity = useMemo(
     () =>

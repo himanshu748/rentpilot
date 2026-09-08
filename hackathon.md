@@ -8,7 +8,7 @@ RentPilot searches for rooms using a renter's city, preferred areas, budget, hom
 - Pursuit cockpit: [https://ceaseless-pigeon-981.convex.site/app](https://ceaseless-pigeon-981.convex.site/app)
 - Permitted sample source: [https://ceaseless-pigeon-981.convex.site/sample-source](https://ceaseless-pigeon-981.convex.site/sample-source)
 - Public source: [https://github.com/himanshu748/rentpilot](https://github.com/himanshu748/rentpilot)
-- Demo video: [2:29 deployed-product walkthrough on YouTube](https://youtu.be/TjNKa9jboJo), with live integrations and clearly identified test listings
+- Demo video: [2:30 deployed-product walkthrough on YouTube](https://youtu.be/TjNKa9jboJo), with live integrations and clearly identified test listings
 - Sponsor showcase: [X post](https://x.com/jhahimanshu653/status/2096278313539092555), tagging Convex, OpenAI, Firecrawl, AgentMail and Wayne Sutton, with Codex development credit
 - Judge walkthrough and demo script: [submission.md](./submission.md)
 - Real-ad research: [Bithauli/Bhitauli evidence and gaps](./docs/inventory-evidence.md); ads found, no exact-match vacancy or approved real source established
@@ -99,7 +99,9 @@ September 7 discovery update: searches now combine area/budget discovery with an
 
 Public listing: [RentPilot on Vibe Apps](https://vibeapps.dev/s/rentpilot). Rechecked September 7: the saved metadata includes `AllGasHackathon`, the YouTube demo, public repo and live app URL. The public listing does not expose the organizer's internal judging-group record.
 
-September 5 final review: Claude independently audited the current source. Added visible fictional-listing labels to queue rows, removed the obsolete README seed step, skipped authenticated delivery subscriptions after sign-out, and added a route error recovery screen. The full test suite, production build and typecheck pass. The demo predates these final presentation fixes; the recorded integration flow is unchanged.
+September 5 review: Claude independently audited that day's source. Added visible fictional-listing labels to queue rows, removed the obsolete README seed step, skipped authenticated delivery subscriptions after sign-out, and added a route error recovery screen. That review does not cover the September 7 changes. The demo predates these presentation fixes; the recorded integration flow is unchanged.
+
+September 8 presentation check: all 75 automated tests, build and TypeScript checks pass; lint has no errors and four generated-file warnings. The public video is approximately 150 seconds. The README and submission packet now link the published entry and distinguish the September 5 integration test from the September 7 UI changes. Production still has only test sources approved for extraction. Public links may be shown as unverified leads; no real feed was approved or imported, and no partnership email was sent.
 
 - [x] Verify Luma registration (registration-confirmation email dated August 26, checked September 5)
 - [x] Participant confirms personal eligibility under the official rules (September 5)
@@ -113,6 +115,6 @@ September 5 final review: Claude independently audited the current source. Added
 - [x] Configure production OpenAI access through Vercel AI Gateway and verify a structured draft probe
 - [x] Verify a real model-authored inquiry through the signed-in product flow
 - [x] Register AgentMail `message.received` webhook and verify a listing-linked reply round trip
-- [x] Record an under-three-minute deployed-product demo (2:29, linked above)
+- [x] Record an under-three-minute deployed-product demo (approximately 2:30, linked above)
 - [x] Post on X or LinkedIn and tag `@convex`, `@OpenAI`, `@firecrawl`, and `@agentmail`
 - [x] Publish the repository, live URL, and video on [Vibe Apps](https://vibeapps.dev/s/rentpilot); public entry and hackathon tag verified September 7 (internal judging-group membership is not exposed publicly)

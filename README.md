@@ -2,13 +2,15 @@
 
 RentPilot turns scattered room listings into traceable pursuits. Each pursuit keeps its source evidence, explains its fit score and presents one safe next action from found to viewing.
 
-This repository is the working Convex All Gas Hackathon build.
+This is the Convex All Gas Hackathon build, [submitted on Vibe Apps](https://vibeapps.dev/s/rentpilot) on September 5, 2026.
 
 **Live app:** [https://ceaseless-pigeon-981.convex.site](https://ceaseless-pigeon-981.convex.site)
 
 **Hackathon build log:** [hackathon.md](./hackathon.md)
 
 **Judge walkthrough and demo script:** [submission.md](./submission.md)
+
+**Demo:** [2:30 product walkthrough](https://youtu.be/TjNKa9jboJo). The integration demonstration uses labelled fictional listings and controlled inboxes. As checked September 8, production has only test sources approved for extraction, with no permission-backed real rental feed connected. Public search links remain unverified leads; no room meeting the complete Bithauli brief has been confirmed.
 
 ## What works
 
@@ -167,9 +169,9 @@ npm run lint
 npx tsc --noEmit
 ```
 
-The 56 automated tests cover location and currency isolation, offered-unit extraction, hard budget and amenity
+The 75 automated tests, rerun September 8, cover location and currency isolation, offered-unit extraction, hard budget and amenity
 gates, OpenAI request/response handling without fallback, sign-in delivery receipts,
-review-before-send UI behavior, and reply matching/idempotency. These use stubs at
+review-before-send UI behavior, reply matching/idempotency, sign-in recovery, progressive search updates and concurrent-run protection. These use stubs at
 external-service boundaries and do not replace a live end-to-end integration test.
 
 The deployed first-visitor flow and signed-in phone/tablet/desktop layouts were checked
@@ -179,6 +181,8 @@ on September 5: Firecrawl read permitted fictional listings, OpenAI drafted an i
 the tester edited and confirmed it, AgentMail delivered it to a controlled inbox, and a
 real reply appeared on the same listing and survived reload. No real landlord was
 contacted. This proves the integration loop, not worldwide rental inventory.
+
+The September 7 update added progressive search states, lead filters, requirement checklists and copyable questions. Desktop and mobile UI checks passed. A fresh signed-in provider round trip for that update remains untested. The published video records the September 5 build.
 
 Run `npm run build` first. Next generates the route types that `layout.tsx` depends on into `.next/types`, so on a clean checkout `npx tsc --noEmit` fails until a build or `npm run dev` has created them.
 

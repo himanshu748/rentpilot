@@ -1,6 +1,6 @@
 # RentPilot submission packet
 
-Status: prepared locally; not a verified hackathon submission. Luma registration was confirmed by its August 26 confirmation email. The demo video, social post, personal eligibility confirmation and final form remain open until their confirmations are recorded below.
+Status: [published on Vibe Apps](https://vibeapps.dev/s/rentpilot) on September 5, 2026. The public record, app, repository, video and sponsor-tagged X post were rechecked September 8. Luma registration and personal eligibility are based on the earlier confirmation records. The public page does not expose the organizer's internal judging-group record.
 
 ## Project copy
 
@@ -18,7 +18,7 @@ The complete flow has passed on the deployed app using clearly labelled fictiona
 
 I used OpenAI Codex throughout development to implement features, debug integrations and run end-to-end checks. Codex helped build the app; OpenAI gpt-4o-mini writes inquiry drafts inside the app.
 
-**Vibe Apps tags:** `convex`, `AllGasHackathon`, `OpenAI`, `Firecrawl`, `codex`, `AgentMail`.
+**Saved Vibe Apps tags:** `Firecrawl`, `AgentMail`, `convex`, `codex`, `AllGasHackathon`. OpenAI's role is described in the project text and tagged in the published X post.
 
 ## Public links
 
@@ -26,27 +26,23 @@ I used OpenAI Codex throughout development to implement features, debug integrat
 - Product: https://ceaseless-pigeon-981.convex.site/app
 - Repository: https://github.com/himanshu748/rentpilot
 - Build log: https://github.com/himanshu748/rentpilot/blob/main/hackathon.md
-- Video: pending recording and public hosting
+- Video: [2:30 product walkthrough](https://youtu.be/TjNKa9jboJo)
+- Published submission: https://vibeapps.dev/s/rentpilot
+- Published X post: https://x.com/jhahimanshu653/status/2096278313539092555
 - Official event: https://www.convex.dev/hackathons/all-gas
 - Submission destination: https://vibeapps.dev/judging/convex-all-gas-hackathon-openai/submit
 - Registration: https://luma.com/convex-allgas-hackathon
 - Real-ad research and unresolved requirements: [inventory evidence](./docs/inventory-evidence.md)
 - Vibe Apps profile: https://vibeapps.dev/himanshu748 (username set and verified September 5)
 
-## Actual form check
+## Submission verification
 
-The official All Gas form was opened while signed in on September 5. Project title,
-tagline, description, live URL, repo URL, name, team name and all six sponsor/event tags
-were entered. The convex.site option was selected. **Submit App was not clicked.**
-These are unsent form contents, not a saved or accepted submission; do not assume the
-browser retains them after closing or reloading.
-
-The form asks for a public video URL (YouTube, Vimeo, etc.) and a required screenshot;
-it also allows up to four additional images. It has both LinkedIn and X share/profile
-fields, with inconsistent required/optional wording for LinkedIn. The official event
-still calls for an actual tagged X or LinkedIn post, so a profile link alone should not
-be presented as completed social proof. Contact email and team-size details need to
-be confirmed before the final form is sent. No public video URL exists yet.
+The public page records a September 5 submission, a screenshot, a one-person team,
+the Convex app, public GitHub repository, YouTube demo, X post and saved tags listed
+above. YouTube reports a duration of approximately 150 seconds and a playable video.
+The X post mentions Convex, OpenAI, Firecrawl and AgentMail, plus Wayne Sutton and Codex.
+The LinkedIn field is a profile link, not a published post; the official rules allow
+X or LinkedIn, so the X post supplies the social requirement.
 
 ## Judge walkthrough
 
@@ -60,9 +56,9 @@ be confirmed before the final form is sent. No public video URL exists yet.
 
 Do not publish credentials, login codes or session tokens in the recording. Sign in before recording. Do not fabricate results or change filters invisibly to make an empty search look successful.
 
-## Demo plan: 2 minutes 40 seconds
+## Original recording plan: 2 minutes 40 seconds
 
-This is a recording script, not an existing video. Use the deployed product, with readable browser text and no unrelated tabs. Mark any cuts that remove provider waiting time.
+The following is the original recording plan. The published cut is approximately 2:30 and records the September 5 build. It predates the September 7 search and sign-in improvements. For a new recording, use the deployed product, readable browser text and no unrelated tabs. Mark cuts that remove provider waiting time.
 
 | Time | Show | Narration |
 | --- | --- | --- |
@@ -79,7 +75,7 @@ Record the actual generation, send and reply. If a provider fails, show the erro
 
 ## Social copy
 
-Choose one platform. These are drafts, not evidence of publication.
+The sponsor-tagged X post is published at the link above. The alternatives below are retained drafts, not additional published posts.
 
 ### X: three-post thread
 
@@ -110,13 +106,14 @@ Code: https://github.com/himanshu748/rentpilot
 
 - [x] Live app and public repository
 - [x] Real sponsor integration loop verified on controlled fixtures
-- [x] 56 automated tests, build and typecheck pass; four generated-file lint warnings remain
+- [x] 75 automated tests, build and typecheck pass on September 8; four generated-file lint warnings remain
 - [x] Verify Luma registration (August 26 confirmation email checked September 5)
-- [ ] Participant confirms personal eligibility under the official rules
-- [ ] Record, inspect and publicly host the under-three-minute video
+- [x] Participant confirms personal eligibility under the official rules (September 5)
+- [x] Record, inspect and publicly host the under-three-minute video
 - [ ] Obtain owner-confirmed, permission-backed real listing evidence before claiming a live inventory integration
-- [ ] Publish X or LinkedIn post with required sponsor tags; record URL
-- [ ] Add video and social URLs to this file and hackathon.md
-- [ ] Complete the actual vibeapps.dev fields and verify the resulting public submission page
+- [x] Publish X post with required sponsor tags; record URL
+- [x] Add video and social URLs to this file and hackathon.md
+- [x] Verify the resulting public Vibe Apps submission page
+- [ ] Repeat the authenticated provider search after the September 7 discovery update
 
-The event deadline is September 22, 2026 at 12 PM Pacific, per the official event page checked September 5. Recheck before submitting. Do not mark a gate complete merely because its draft exists.
+The event deadline is September 22, 2026 at 12 PM Pacific, per the official event page checked September 8. Do not mark a gate complete merely because its draft exists.

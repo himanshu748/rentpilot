@@ -40,3 +40,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local-only social drafts, storyboards and video production sources
+/local-marketing/
+/videos/
+/storyboards/
+/social-draft.md
+/social-drafts.md
+/docs/archive/social-draft.md
+
+# Local recording output and browser sessions
+/output/
+/.playwright/
+/.playwright-cli/

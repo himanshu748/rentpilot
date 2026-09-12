@@ -10,16 +10,16 @@ function load(name, imports, extra = {}) {
   return exports;
 }
 const brief = { id: "criteria", city: "Lucknow", country: "India", currency: "INR", areas: ["Bithauli", "Bhitauli"], bedrooms: ["Private room"], budgetMax: 8000, mustHaves: ["Cooler", "Bed", "LPG cooking cylinder"], contactEmail: "private@example.com" };
-function setup({ web = [], permission = null, signedIn = true, extractionError = null, searchError = null } = {}) {
+function setup({ web = [], permission = null, signedIn = true, extractionError = null, searchError = null, partialError = false } = {}) {
   const calls = [], writes = [], scrapes = [];
   const definitions = new Proxy({}, { get: () => (x) => x });
-  const session = { requireUserKey: async () => { if (!signedIn) throw new Error("Sign in"); return "user:me"; }, ownerKey: async (_ctx, owner) => owner };
+  const session = { requireUserKey: async () => { if (!signedIn) throw new Error("Sign in"); return "user:me"; }, ownerKey: async (_ctx, owner) => signedIn ? "user:me" : owner };
   const webSearch = load("webSearch", {
-    "@firecrawl/firecrawl-convex": { FirecrawlClient: class { async search(_ctx, query, options) { calls.push({ query, options }); if (searchError) throw new Error(searchError); return { web }; } } },
+    "@firecrawl/firecrawl-convex": { FirecrawlClient: class { async search(_ctx, query, options) { calls.push({ query, options }); if (searchError || (partialError && calls.length === 2)) throw new Error(searchError ?? "Second query unavailable"); return { web }; } } },
     "convex/values": { v: new Proxy({}, { get: () => () => ({}) }) },
     "./_generated/server": definitions,
     "./_generated/api": { components: {}, internal: { discovery: { getSearchForDiscovery: "brief", getSourceByDomain: "source", scrapeApprovedListingInternal: "scrape" }, rateLimits: { reserve: "reserve" }, webSearch: { searchInternal: "search", save: "save", begin: "begin" } } },
-    "./schema": { searchLead: {}, searchPhase: {} }, "./session": session, "./location": { normalizePlace: (s) => s.trim().toLowerCase() },
+    "./schema": { searchLead: {}, searchPhase: {}, savedLeadStage: {} }, "./session": session, "./location": { normalizePlace: (s) => s.trim().toLowerCase(), formatMoney: (value, currency) => `${currency} ${value}` },
   });
   const ctx = {
     runQuery: async (name) => name === "brief" ? brief : permission ? { _id: "source", permissionStatus: permission } : null,
@@ -54,7 +54,7 @@ test("source links are published before checks and only successful extraction pr
 });
 test("provider failures record a failed run without invented results", async () => {
   const s = setup({ searchError: "Provider unavailable" });
-  await assert.rejects(s.run, /Provider unavailable/);
+  await assert.rejects(s.run, /search provider could not return/);
   assert.equal(s.writes.at(-1).args.phase, "failed");
   assert.equal(s.writes.at(-1).args.results.length, 0);
 });
@@ -111,4 +111,125 @@ test("anonymous identity cannot impersonate user keys", async () => {
   assert.equal(await session.ownerKey({}, "not-a-uuid"), undefined);
   assert.equal(await session.ownerKey({}, "72a96f34-3f26-4d76-9389-e93d7600d18e"), "72a96f34-3f26-4d76-9389-e93d7600d18e");
   assert.equal(await session.ownerKey({ userId: "me" }, "user:victim"), "user:me");
+});
+
+
+test("one failed provider query retains successful leads with a partial-results warning", async () => {
+  const s = setup({ web: [lead], partialError: true });
+  const result = await s.run();
+  assert.equal(result.results.length, 1);
+  assert.equal(result.phase, "complete");
+  assert.match(result.warning, /Only 1 of 2/);
+  assert.equal(s.writes.at(-1).args.warning, result.warning);
+  assert.equal(s.writes.at(-1).args.results[0].status, "permission_required");
+});
+
+function notebookDb({ otherOwner = false } = {}) {
+  let sequence = 0;
+  const rows = new Map();
+  const criteria = { _id: "criteria", sessionId: "user:me", ...brief, budgetMin: 0, localities: brief.areas };
+  const run = { _id: "run", owner: "user:me", criteriaId: "criteria", searchedAt: 123456, results: [{ ...lead, status: "permission_required", note: "Search snippet only." }] };
+  return {
+    rows, criteria, run,
+    query(table) {
+      let filters = [];
+      const chain = {
+        withIndex(_index, callback) {
+          const q = { eq: (field, value) => { filters.push([field, value]); return q; } };
+          callback(q); return chain;
+        },
+        order() { return chain; },
+        async first() { return (await chain.take(1))[0] ?? null; },
+        async take(limit) {
+          const candidates = table === "criteria" ? [criteria] : table === "searchRuns" ? [run] : [...rows.values()];
+          return candidates.filter(row => filters.every(([field, value]) => field.split(".").reduce((node, key) => node?.[key], row) === value)).slice(0, limit);
+        },
+      };
+      return chain;
+    },
+    async get(id) { const row = rows.get(id); return row && otherOwner ? { ...row, owner: "user:someone-else" } : row; },
+    async insert(_table, value) { const id = `saved-${++sequence}`; rows.set(id, { ...structuredClone(value), _id: id }); return id; },
+    async patch(id, fields) { rows.set(id, { ...rows.get(id), ...fields }); },
+    async delete(id) { rows.delete(id); },
+  };
+}
+
+test("saving an owned lead captures its brief and source date and is idempotent", async () => {
+  const s = setup();
+  const db = notebookDb();
+  const id = await s.webSearch.saveLead.handler({ db }, { url: lead.url });
+  assert.equal(await s.webSearch.saveLead.handler({ db }, { url: lead.url }), id);
+  assert.equal(db.rows.size, 1);
+  const saved = db.rows.get(id);
+  assert.equal(saved.owner, "user:me");
+  assert.equal(saved.searchedAt, 123456);
+  assert.equal(saved.stage, "to_check");
+  assert.ok(saved.requirements.includes("Cooler"));
+  assert.equal(saved.lead.status, "permission_required");
+  db.criteria.city = "London";
+  db.run.results = [];
+  assert.equal(db.rows.get(id).city, "Lucknow");
+  assert.equal(db.rows.get(id).lead.url, lead.url);
+});
+
+test("client-provided source data cannot create a saved lead outside its owned search", async () => {
+  const s = setup();
+  const db = notebookDb();
+  await assert.rejects(() => s.webSearch.saveLead.handler({ db }, { url: "https://other.example.com/room" }), /no longer in your current search/);
+  await assert.rejects(() => s.webSearch.saveLead.handler({ db }, { url: "javascript:alert(1)" }), /valid source link/);
+  db.run.owner = "user:other";
+  await assert.rejects(() => s.webSearch.saveLead.handler({ db }, { url: lead.url }), /no longer in your current search/);
+  assert.equal(db.rows.size, 0);
+});
+
+test("manual notes update only the saved record, preserve source evidence and reject stale edits", async () => {
+  const s = setup();
+  const db = notebookDb();
+  const id = await s.webSearch.saveLead.handler({ db }, { url: lead.url });
+  const original = structuredClone(db.rows.get(id));
+  await s.webSearch.updateSavedLead.handler({ db }, { id, stage: "contacted", notes: "  Lister says bed is included; viewing Monday.  ", expectedUpdatedAt: original.updatedAt });
+  const updated = db.rows.get(id);
+  assert.equal(updated.stage, "contacted");
+  assert.equal(updated.notes, "Lister says bed is included; viewing Monday.");
+  assert.deepEqual(updated.lead, original.lead);
+  assert.equal(updated.lead.status, "permission_required");
+  assert.equal(s.scrapes.length, 0);
+  await assert.rejects(() => s.webSearch.updateSavedLead.handler({ db }, { id, stage: "viewing", notes: "stale", expectedUpdatedAt: original.updatedAt }), /changed in another tab/);
+  await assert.rejects(() => s.webSearch.updateSavedLead.handler({ db }, { id, stage: "viewing", notes: "a".repeat(3001), expectedUpdatedAt: updated.updatedAt }), /3,000/);
+});
+
+test("saved leads require sign-in and cross-account updates and deletes fail", async () => {
+  const anonymous = setup({ signedIn: false });
+  await assert.rejects(() => anonymous.webSearch.saveLead.handler({ db: notebookDb() }, { url: lead.url }), /Sign in/);
+  const s = setup();
+  const db = notebookDb({ otherOwner: true });
+  const id = await s.webSearch.saveLead.handler({ db }, { url: lead.url });
+  await assert.rejects(() => s.webSearch.updateSavedLead.handler({ db }, { id, stage: "viewing", notes: "", expectedUpdatedAt: db.rows.get(id).updatedAt }), /not found/);
+  await assert.rejects(() => s.webSearch.removeSavedLead.handler({ db }, { id }), /not found/);
+  assert.equal(db.rows.size, 1);
+});
+
+test("notebook list strips ownership fields and deletion removes only the chosen saved lead", async () => {
+  const s = setup();
+  const db = notebookDb();
+  const id = await s.webSearch.saveLead.handler({ db }, { url: lead.url });
+  const saved = await s.webSearch.savedLeads.handler({ db });
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].owner, undefined);
+  assert.equal(saved[0]._id, id);
+  const anonymous = setup({ signedIn: false });
+  assert.equal((await anonymous.webSearch.savedLeads.handler({ db })).length, 0);
+  await s.webSearch.removeSavedLead.handler({ db }, { id });
+  assert.equal(db.rows.size, 0);
+  assert.equal(db.run.results.length, 1);
+});
+
+
+test("notebook capacity stays bounded without replacing existing notes", async () => {
+  const s = setup();
+  const db = notebookDb();
+  for (let i = 0; i < 50; i++) db.rows.set(`old-${i}`, { _id: `old-${i}`, owner: "user:me", lead: { url: `https://homes.example.com/${i}` }, notes: "keep" });
+  await assert.rejects(() => s.webSearch.saveLead.handler({ db }, { url: lead.url }), /holds 50 leads/);
+  assert.equal(db.rows.size, 50);
+  assert.equal(db.rows.get("old-0").notes, "keep");
 });

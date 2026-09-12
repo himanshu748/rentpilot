@@ -22,6 +22,8 @@ This is the Convex All Gas Hackathon build, [submitted on Vibe Apps](https://vib
 - Session-persistent search briefs for any city, preferred areas, budget, home types and must-haves without requiring account setup
 - City-scoped pursuit queues and source readiness, with an honest empty state when a city has no approved source yet
 - Live Firecrawl web search from the saved brief, with source links labelled as unverified leads. Search does not scrape unapproved pages; only registry-approved sources enter the extraction pipeline.
+- A private saved-lead notebook: keep source links across searches, retain the original source date and requirement snapshot, and record your own notes and progress from checking to a viewing. Notes never turn an unverified lead into an evidence-backed match or trigger email.
+- Partial Firecrawl failures preserve links from the successful query and identify the missing search instead of discarding the whole result.
 - Hard monthly budget, selected locality and room-type gates. Every must-have needs a source quotation; unknown amenities do not become matches. Existing pursuits are checked again when the brief changes, including before drafting or sending.
 - Locality matching is by the named neighbourhood, not a measured distance radius. Search snippets do not establish availability, amenities, or final costs.
 - Convex schema with bounded indexed queries for sources, criteria, listings, threads, activity and validation runs
@@ -169,9 +171,9 @@ npm run lint
 npx tsc --noEmit
 ```
 
-The 75 automated tests, rerun September 8, cover location and currency isolation, offered-unit extraction, hard budget and amenity
+The 82 automated tests, rerun September 12, cover location and currency isolation, offered-unit extraction, hard budget and amenity
 gates, OpenAI request/response handling without fallback, sign-in delivery receipts,
-review-before-send UI behavior, reply matching/idempotency, sign-in recovery, progressive search updates and concurrent-run protection. These use stubs at
+review-before-send UI behavior, reply matching/idempotency, sign-in recovery, progressive search updates, concurrent-run protection, saved-lead ownership and persistence, duplicate saves, stale-edit rejection, notebook capacity, and partial provider failures. These use stubs at
 external-service boundaries and do not replace a live end-to-end integration test.
 
 The deployed first-visitor flow and signed-in phone/tablet/desktop layouts were checked
@@ -181,6 +183,8 @@ on September 5: Firecrawl read permitted fictional listings, OpenAI drafted an i
 the tester edited and confirmed it, AgentMail delivered it to a controlled inbox, and a
 real reply appeared on the same listing and survived reload. No real landlord was
 contacted. This proves the integration loop, not worldwide rental inventory.
+
+The September 12 update adds a private saved-lead notebook and usable partial search results. The notebook keeps source dates and original requirements, with manual notes clearly separated from verified matches. Local browser checks at 1280px and 375px cover saving, stage changes, notes, filtering, cancelling an edit and removing a saved lead, with no horizontal overflow. These UI checks used a fictional fixture; automated persistence checks use a stubbed database. Deployment and authenticated production verification are recorded separately in the build log.
 
 The September 7 update added progressive search states, lead filters, requirement checklists and copyable questions. Desktop and mobile UI checks passed. A fresh signed-in provider round trip for that update remains untested. The published video records the September 5 build.
 

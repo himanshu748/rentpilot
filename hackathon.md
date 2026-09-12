@@ -91,6 +91,17 @@ The production sender inbox and least-privilege API key are configured. The `mes
 - Full production sample extraction → OpenAI draft → human-approved inquiry → reply shown on its match: **passed September 5**. This used live provider calls and a normally authenticated controlled test account. The listing showed AgentMail delivery as sent and its stage as Replied; data remained after reload. Browser console errors: none.
 - The user's real Bithauli/Bhitauli brief remains INR 8,000 maximum with cooler, bed and LPG cooking cylinder required. No evidence-backed room satisfying that brief was established by these tests. Fictional fixtures prove integration behavior, not supply in that market.
 
+## September 12 saved-lead upgrade
+
+Real search results need a useful next step even when a source cannot be extracted automatically. Signed-in renters can now save a source link to a private notebook, retain its original search date and requirements, and record notes and progress as they contact a lister themselves. The notebook survives a new search or brief change. It does not change listing evidence, fit scores, scraping permission or email eligibility.
+
+- Convex stores up to 50 source snapshots per account with indexed owner reads, duplicate-save protection, and a revision check that rejects stale edits from another tab.
+- The stages are To check, Contacted by me, Viewing arranged and Not suitable. These are user records, not claims that AgentMail contacted a lister or that availability was verified.
+- Firecrawl's area and amenities searches settle independently. If one fails, the successful links remain usable with a partial-results warning and a retry action.
+- Source timestamps use an explicit locale and timezone after a local browser check caught a server/client date-format mismatch.
+- Validation: 82 automated tests; TypeScript and production build; lint has no errors and four existing generated-file warnings. Tests stub external providers and database operations. A local browser fixture at 1280px and 375px passed save, notes, viewing stage, filter, cancel and removal checks with no horizontal overflow. The temporary fixture route was removed before the production build; recordings and production drafts remain ignored locally.
+- The published video still records the September 5 build. The notebook is a real Convex-backed workflow, but local fixture checks alone are not authenticated production evidence. No new real rental source or vacancy was established by this work, and no landlord was contacted.
+
 ## Submission checklist
 
 September 7 usability update: added existing-code recovery when delivery confirmation times out, a one-minute resend cooldown, code-entry retention when the dialog closes, keyboard focus on the code field, and guards against late request responses. The detail panel now follows the filtered results instead of showing a hidden match. Desktop and 375px/320px browser checks cover the recovery UI without sending email; provider failures and resend behavior are covered with stubbed automated tests. The submitted video records the September 5 build.

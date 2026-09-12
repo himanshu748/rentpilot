@@ -33,9 +33,24 @@ export const searchLead = v.object({
 });
 
 export const searchPhase = v.union(v.literal("searching"), v.literal("checking"), v.literal("complete"), v.literal("failed"));
+export const savedLeadStage = v.union(v.literal("to_check"), v.literal("contacted"), v.literal("viewing"), v.literal("not_suitable"));
 
 export default defineSchema({
   ...authTables,
+
+  savedLeads: defineTable({
+    owner: v.string(),
+    lead: searchLead,
+    city: v.string(),
+    requirements: v.array(v.string()),
+    searchedAt: v.number(),
+    savedAt: v.number(),
+    updatedAt: v.number(),
+    stage: savedLeadStage,
+    notes: v.string(),
+  })
+    .index("by_owner_and_url", ["owner", "lead.url"])
+    .index("by_owner_and_saved_at", ["owner", "savedAt"]),
 
   searchRuns: defineTable({
     owner: v.string(), criteriaId: v.id("criteria"), query: v.string(),
@@ -43,6 +58,7 @@ export default defineSchema({
     phase: v.optional(searchPhase),
     queries: v.optional(v.array(v.string())),
     error: v.optional(v.string()),
+    warning: v.optional(v.string()),
   }).index("by_owner_and_criteria", ["owner", "criteriaId"]),
 
   sources: defineTable({

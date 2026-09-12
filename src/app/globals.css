@@ -462,3 +462,30 @@ main:focus { outline: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+
+/* Private source notebook follows the existing paper and sage workspace. */
+.saved-leads-panel { margin-block: 24px 32px; border: 1px solid var(--hairline); border-radius: 8px; padding: clamp(16px, 2.5vw, 24px); min-width: 0; background: var(--surface); }
+.saved-leads-panel h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.saved-leads-panel h2 span { margin-left: auto; font-size: 12px; color: var(--ink-muted); font-weight: 400; letter-spacing: 0; }
+.saved-leads-panel .discovery-filters { margin-top: 16px; }
+.saved-lead { padding-block: 20px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.saved-lead:last-child { border-bottom: 0; padding-bottom: 0; }
+.saved-lead h3 { margin-block: 10px; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.saved-lead h3 a { text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--hairline); }
+.saved-lead h3 svg { display: inline; }
+.saved-stage { padding: 3px 7px; background: var(--sage-soft); color: var(--ink); border-radius: 4px; }
+.saved-lead-date, .saved-source, .saved-notes-form > p { font-size: 12px; line-height: 1.65; color: var(--ink-muted); }
+.saved-source summary { cursor: pointer; min-height: 44px; padding-block: 12px; color: var(--ink); }
+.saved-source p, .saved-source ul { margin-bottom: 12px; }
+.saved-source ul { padding-left: 18px; }
+.saved-source li { margin-bottom: 6px; color: var(--ink); }
+.saved-source li span { color: var(--ink-muted); }
+.saved-notes { font-size: 13px; line-height: 1.65; white-space: pre-wrap; margin-block: 12px; }
+.saved-notes strong { display: block; font-size: 11px; color: var(--ink-muted); margin-bottom: 4px; }
+.saved-notes-form { display: grid; gap: 12px; margin-top: 12px; }
+.saved-notes-form label { display: grid; gap: 6px; font-size: 12px; }
+.saved-notes-form textarea, .saved-notes-form select { width: 100%; min-height: 44px; padding: 10px; background: var(--paper); border: 1px solid var(--hairline); border-radius: 4px; font-size: 13px; }
+.saved-notes-form textarea { resize: vertical; }
+.discovery-warning { padding: 14px; margin-block: 12px; border-left: 3px solid var(--amber); background: var(--surface); font-size: 13px; line-height: 1.65; }
+.discovery-warning button { margin-top: 10px; }

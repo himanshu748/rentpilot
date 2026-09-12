@@ -46,6 +46,7 @@ import {
   type SendStatus,
 } from "@/lib/pursuit";
 import { SignInDialog } from "@/components/sign-in-dialog";
+import { SavedLeadsPanel } from "@/components/saved-leads-panel";
 import { SearchDiscoveryPanel } from "@/components/search-discovery-panel";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
@@ -684,6 +685,10 @@ export function RentPilotCockpit() {
   const sweepSampleSource = useAction(api.discovery.sweepSampleSource);
   const searchWeb = useAction(api.webSearch.search);
   const latestSearch = useQuery(api.webSearch.latest, sessionId ? { sessionId } : "skip");
+  const savedLeads = useQuery(api.webSearch.savedLeads, viewer ? {} : "skip");
+  const saveLead = useMutation(api.webSearch.saveLead);
+  const updateSavedLead = useMutation(api.webSearch.updateSavedLead);
+  const removeSavedLead = useMutation(api.webSearch.removeSavedLead);
   const [searchingWeb, setSearchingWeb] = useState(false);
   const [webSearchError, setWebSearchError] = useState<string | null>(null);
   const claimAnonymousSession = useMutation(api.workspace.claimAnonymousSession);
@@ -1100,7 +1105,8 @@ export function RentPilotCockpit() {
               <span className="action-label">{searchingWeb ? "Searching the web…" : hasSearch ? "Find live leads" : "Choose your location"}</span>
             </button>
           </div>
-          {hasSearch && <SearchDiscoveryPanel brief={activeCriteria} run={latestSearch} searching={searchingWeb} error={webSearchError} onSearch={findLiveLeads} onEdit={() => setCriteriaOpen(true)} />}
+          {hasSearch && <SearchDiscoveryPanel brief={activeCriteria} run={latestSearch} searching={searchingWeb} error={webSearchError} onSearch={findLiveLeads} onEdit={() => setCriteriaOpen(true)} savedUrls={(savedLeads ?? []).map(item => item.lead.url)} onSaveLead={async url => { if (!viewer) { setSignInOpen(true); throw new Error("Sign in to keep this lead with your account."); } await saveLead({ url }); }} />}
+          {viewer && savedLeads !== undefined && <SavedLeadsPanel leads={savedLeads} onUpdate={async (lead, stage, notes, revision) => { await updateSavedLead({ id: lead._id, stage, notes, expectedUpdatedAt: revision }); }} onRemove={async lead => { await removeSavedLead({ id: lead._id }); }} />}
           <div className="toolbar">
             <label className="search-box"><Search size={16} aria-hidden="true" /><span className="sr-only">Filter matches</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter matches by area or title" /></label>
             <div className="filter-wrap"><Filter size={14} aria-hidden="true" /><label htmlFor="status-filter" className="sr-only">Filter by status</label><select id="status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | PursuitStatus)}><option value="all">All stages</option>{statusOrder.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}<option value="closed">Closed</option></select><ChevronDown size={14} aria-hidden="true" /></div>

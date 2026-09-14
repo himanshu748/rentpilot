@@ -80,9 +80,9 @@
   --color-accent: var(--sage-soft);
   --color-accent-foreground: var(--ink);
   --color-destructive: var(--error);
-  --radius-sm: 0.35rem;
-  --radius-md: 0.55rem;
-  --radius-lg: 0.8rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.25rem;
   --radius-xl: 1rem;
 }
 

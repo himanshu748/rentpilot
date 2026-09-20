@@ -21,6 +21,7 @@ function harness(overrides = {}, saveError = false, authenticated = true) {
     require: (name) => {
       if (name === "react") return { ...react, useState: (initial) => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = typeof value === "function" ? value(state[i]) : value; }]; }, useRef: initial => { const i = refCursor++; return refs[i] ??= { current: initial }; }, useEffect: () => {} };
       if (name === "convex/react") return { useConvexAuth: () => ({ isAuthenticated: authenticated }), useQuery: (_, args) => { calls.queries.push(args); return null; } };
+      if (name === "../../convex/leadEvidence") return { phoneNumber: value => value };
       if (name === "../../convex/location") return { formatMoney: value => String(value) };
       if (name === "sonner") return { toast: { success() {}, error() {} } };
       if (name === "@/lib/utils") return { cn: (...values) => values.filter(Boolean).join(" ") };

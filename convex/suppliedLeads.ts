@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { requireUserKey } from "./session";
-import { recipientEmail, sourceAge, verificationDraft } from "./leadEvidence";
+import { phoneNumber, recipientEmail, sourceAge, verificationDraft } from "./leadEvidence";
 import { formatMoney } from "./location";
 import { reserveIntegrationUse } from "./rateLimits";
 const mail = new AgentMail(components.agentmail);
@@ -21,16 +21,17 @@ export const list = query({
   },
 });
 export const importListing = mutation({
-  args: { title: v.string(), originalText: v.string(), provenance: v.string(), sourceDate: v.string(), permissionBasis: v.string(), contentPermission: v.boolean(), contactPermission: v.boolean(), recipient: v.string(), isFixture: v.boolean() },
+  args: { title: v.string(), originalText: v.string(), provenance: v.string(), sourceDate: v.string(), permissionBasis: v.string(), contentPermission: v.boolean(), contactPermission: v.boolean(), recipient: v.string(), phone: v.optional(v.string()), isFixture: v.boolean() },
   returns: v.id("suppliedLeads"),
   handler: async (ctx, args) => {
     const owner = await requireUserKey(ctx);
     if (!args.contentPermission || args.permissionBasis.trim().length < 10) throw new Error("Describe your permission to use this original text. A public URL alone is not permission.");
     if (args.title.trim().length < 3 || args.title.length > 120 || args.originalText.trim().length < 20 || args.originalText.length > 12000 || args.provenance.trim().length < 3 || args.provenance.length > 500 || args.permissionBasis.length > 1000) throw new Error("Provide a title, original listing text and its origin within the form limits.");
     if (sourceAge(args.sourceDate) === "invalid") throw new Error("Choose a valid source date, or leave it unknown.");
+    if (args.phone && !phoneNumber(args.phone)) throw new Error("Enter a phone number with 7–15 digits, optionally including its country code.");
     if (args.recipient && !recipientEmail(args.recipient)) throw new Error("Use one valid recipient email address.");
     const leads = await ctx.db.query("suppliedLeads").withIndex("by_owner", q => q.eq("owner", owner)).take(50);
-    const duplicate = leads.find(lead => lead.originalText === args.originalText && lead.provenance === args.provenance && lead.sourceDate === args.sourceDate && lead.recipient === (recipientEmail(args.recipient) ?? ""));
+    const duplicate = leads.find(lead => lead.originalText === args.originalText && lead.provenance === args.provenance && lead.sourceDate === args.sourceDate && lead.recipient === (recipientEmail(args.recipient) ?? "") && (lead.phone ?? "") === (phoneNumber(args.phone ?? "") ?? ""));
     if (duplicate) return duplicate._id;
     if (leads.length >= 50) throw new Error("Your supplied listing notebook holds 50 entries.");
     const brief = await ctx.db.query("criteria").withIndex("by_session_and_updated_at", q => q.eq("sessionId", owner)).order("desc").first();
@@ -38,7 +39,7 @@ export const importListing = mutation({
     const currency = brief.currency ?? "INR";
     const { contentPermission: _, ...fields } = args;
     void _;
-    return await ctx.db.insert("suppliedLeads", { ...fields, recipient: recipientEmail(args.recipient) ?? "", owner, savedAt: Date.now(), requirements: [
+    return await ctx.db.insert("suppliedLeads", { ...fields, phone: phoneNumber(args.phone ?? "") ?? "", recipient: recipientEmail(args.recipient) ?? "", owner, savedAt: Date.now(), requirements: [
       `${brief.city ?? "Bengaluru"}, ${brief.country ?? "India"}`,
       `${formatMoney(brief.budgetMin, currency)}–${formatMoney(brief.budgetMax, currency)} total monthly budget`,
       brief.localities.join(" / "), brief.bedrooms.join(" or "), ...brief.mustHaves,

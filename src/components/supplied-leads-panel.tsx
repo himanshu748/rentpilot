@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
-import { sourceAge } from "../../convex/leadEvidence";
+import { phoneNumber, sourceAge } from "../../convex/leadEvidence";
 
 type Lead = FunctionReturnType<typeof api.suppliedLeads.list>[number];
 export function SuppliedLeadCard({ lead }: { lead: Lead }) {
@@ -33,6 +33,8 @@ export function SuppliedLeadCard({ lead }: { lead: Lead }) {
       <p>Rent, mandatory monthly charges and deposit must be confirmed separately. Locality names do not establish measured distance. New searches do not change this saved brief.</p>
     </details>
     {lead.inquiry ? <p role="status">Email: {lead.inquiry.status === "queued" ? "Queued; provider delivery not confirmed" : lead.inquiry.status === "sent" ? `Provider reported ${lead.inquiry.providerStatus}` : "Provider reported a failure"}. The listing remains unverified.</p> : <button type="button" className="secondary-action" disabled={!permitted || busy} onClick={() => { setReview(true); setAcknowledged(false); }}>Ask to verify</button>}
+    {!lead.recipient && lead.phone && <p>No email provided. {lead.contactPermission && !lead.revokedAt && !lead.isFixture && phoneNumber(lead.phone) ? <a href={`tel:${phoneNumber(lead.phone)}`}>Call {lead.phone}</a> : <span>Recorded phone: {lead.phone}</span>}. This is a user-supplied number, not a verified identity. No call is placed automatically.</p>}
+    {!lead.recipient && lead.phone && <details><summary>Questions to ask by phone</summary><p className="supplied-original">{lead.draft.body}</p><p>Record the answers in your notes. A call is not provider-confirmed email activity.</p></details>}
     {!permitted && !lead.inquiry && <p>No email will be sent without an authorized recipient and active contact permission. Fictional practice listings never send mail.</p>}
     {review && !lead.inquiry && <section className="verification-review" aria-label="Review inquiry">
       <h4>Review this inquiry</h4><p><strong>To:</strong> {lead.recipient}</p><p><strong>Subject:</strong> {lead.draft.subject}</p><p className="supplied-original">{lead.draft.body}</p>
@@ -54,7 +56,7 @@ export function SuppliedLeadsPanel() {
     event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
     const value = (key: string) => String(data.get(key) ?? "").trim();
     setBusy(true); setError("");
-    try { await importListing({ title: value("title"), originalText: value("originalText"), provenance: value("provenance"), sourceDate: value("sourceDate"), permissionBasis: value("permissionBasis"), recipient: value("recipient"), contentPermission: data.has("contentPermission"), contactPermission: data.has("contactPermission"), isFixture: data.has("isFixture") }); form.reset(); }
+    try { await importListing({ title: value("title"), originalText: value("originalText"), provenance: value("provenance"), sourceDate: value("sourceDate"), permissionBasis: value("permissionBasis"), recipient: value("recipient"), phone: value("phone"), contentPermission: data.has("contentPermission"), contactPermission: data.has("contactPermission"), isFixture: data.has("isFixture") }); form.reset(); }
     catch(e) { setError(e instanceof Error ? e.message : "Could not save listing."); }
     finally { setBusy(false); }
   }
@@ -69,8 +71,9 @@ export function SuppliedLeadsPanel() {
       <label>Source date, if known<input type="date" name="sourceDate" /></label>
       <label>Permission basis<textarea name="permissionBasis" required minLength={10} maxLength={1000} rows={2} placeholder="Who permitted this use, and when?" /></label>
       <label>Permitted contact email, if known<input name="recipient" type="email" maxLength={254} /></label>
+      <label>Permitted phone number, if no email is available<input name="phone" type="tel" maxLength={30} placeholder="Include the country code if known" /></label>
       <label><input type="checkbox" name="contentPermission" required /> I own this text or have permission to use it here.</label>
-      <label><input type="checkbox" name="contactPermission" /> The lister permits an inquiry at this email.</label>
+      <label><input type="checkbox" name="contactPermission" /> The lister permits an inquiry using these contact details.</label>
       <label><input type="checkbox" name="isFixture" /> This is a fictional practice listing. Never send email.</label>
       <button type="submit" disabled={busy}>{busy ? "Saving…" : "Save unverified listing"}</button>
       {error && <p role="alert">{error}</p>}

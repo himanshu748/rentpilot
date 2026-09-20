@@ -9,7 +9,7 @@ A fresh read of production `workspace:listSources` at `ceaseless-pigeon-981.conv
 
 No authorized real extraction feed or consenting lister inventory was established. Roomies' current terms, section 3.1, continue to restrict scraping: https://www.roomies.co.in/terms. Housing's terms were inspected at https://housing.com/terms-of-use; no affirmative extraction permission was obtained. Neither site was scraped for listings during this audit. Historical ads in `inventory-evidence.md` are not current vacancies or permission grants.
 
-## New private workflow (implementation; not yet deployed)
+## New private workflow (deployed 20 September 2026)
 
 1. Sign in and save a rental brief.
 2. Add original text you own or have permission to use. Record its origin, permission basis and source date; unknown dates are allowed and visible. This does not fetch a third-party URL.
@@ -36,4 +36,8 @@ See `verification-2026-09-20.md` for exact local results. Automated integration 
 
 A real trial requires a willing renter and a lister-authorized original listing, then specific recipient/send approval. Ask the renter to import incomplete information, explain the difference between a lead and a confirmed match, inspect costs, review the inquiry, and reload after the consenting lister replies. Record observed failures and the participant's actual words only with their consent. No independent renter trial has happened in this audit.
 
-Before production rollout: review the additive tables and stricter legacy-match behavior; deploy Convex functions/schema; build and deploy the static export; verify signed-in import and mobile review; complete one consenting lister round trip. Do not modify shared AgentMail inbox configuration or another project's webhooks. Recheck that public submission claims describe what is actually deployed.
+For future rollouts: review the additive tables and stricter legacy-match behavior; deploy Convex functions/schema; build and deploy the static export; verify signed-in import and mobile review; complete one consenting lister round trip. Do not modify shared AgentMail inbox configuration or another project's webhooks. Recheck that public submission claims describe what is actually deployed.
+
+## Area guidance and phone fallback
+
+Search preferences explain how to choose a neighbourhood, sector or street and explicitly add surrounding areas. Inquiries ask for the street/sector and nearest landmark; this does not assert measured distance. When email is missing, a valid source-backed or user-supplied number is displayed. Permitted non-fictional contacts have a manual call link and supplied leads expose questions to ask by phone. No phone call is placed automatically and it does not create email delivery or viewing activity. Numbers are validated without inventing a country code; extraction retains only numbers found in source text.

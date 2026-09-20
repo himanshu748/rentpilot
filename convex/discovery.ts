@@ -14,6 +14,8 @@ import { sameMarket, validCurrency } from "./location";
 import { amenityEvidence } from "./schema";
 import { eligibilityProblems, groundedAmenities, groundedCosts, extractedHomeTypes, groundedHomeType } from "./eligibility";
 
+import { groundedPhone } from "./leadEvidence";
+
 const firecrawl = new FirecrawlClient(components.firecrawl);
 
 type DiscoveryResult = {
@@ -332,7 +334,7 @@ export const scrapeApprovedListingInternal = internalAction({
       contactEmail:
         typeof record.contactEmail === "string" ? record.contactEmail : null,
       contactPhone:
-        typeof record.contactPhone === "string" ? record.contactPhone : null,
+        groundedPhone(record.contactPhone, page.markdown ?? ""),
     };
     const contentHash = JSON.stringify(extracted);
     return await ctx.runMutation(internal.discovery.persistExtractedListing, {

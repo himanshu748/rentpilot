@@ -46,6 +46,7 @@ import {
   type SendStatus,
 } from "@/lib/pursuit";
 import { SignInDialog } from "@/components/sign-in-dialog";
+import { phoneNumber } from "../../convex/leadEvidence";
 import { SuppliedLeadsPanel } from "@/components/supplied-leads-panel";
 import { SavedLeadsPanel } from "@/components/saved-leads-panel";
 import { SearchDiscoveryPanel } from "@/components/search-discovery-panel";
@@ -245,8 +246,8 @@ function CriteriaDialog({
               </label>
               <label className="form-field form-field-wide" htmlFor="criteria-areas">
                 <span>Preferred areas (required)</span>
-                <input id="criteria-areas" value={areas} onChange={(event) => setAreas(event.target.value)} autoComplete="address-level3" spellCheck={false} aria-invalid={Boolean(errors.areas)} aria-describedby={errors.areas ? "criteria-areas-error" : "criteria-areas-hint"} placeholder="Camden, Islington" />
-                {errors.areas ? <small id="criteria-areas-error" className="field-error">{errors.areas}</small> : <small id="criteria-areas-hint">Separate areas with commas.</small>}
+                <input id="criteria-areas" value={areas} onChange={(event) => setAreas(event.target.value)} autoComplete="address-level3" spellCheck={false} aria-invalid={Boolean(errors.areas)} aria-describedby={errors.areas ? "criteria-areas-error" : "criteria-areas-hint"} placeholder="Bhitauli, Jankipuram Extension" />
+                {errors.areas ? <small id="criteria-areas-error" className="field-error">{errors.areas}</small> : <small id="criteria-areas-hint">Use specific neighbourhoods, sectors or streets, separated by commas. Add nearby areas you would accept explicitly; RentPilot does not silently widen your search.</small>}
               </label>
               <label className="form-field form-field-wide" htmlFor="criteria-currency">
                 <span>Rent currency (required)</span>
@@ -265,6 +266,7 @@ function CriteriaDialog({
                 {errors.budget && <small id="criteria-budget-error" className="field-error">{errors.budget}</small>}
               </label>
             </div>
+            <details className="form-field"><summary>How to narrow an area</summary><p>Start with the city, then name the neighbourhood or sector. If being near a college, office or station matters, ask the lister for the street and nearest landmark. Add each surrounding area you would consider to your preferred areas.</p><p>A locality match is not a measured distance. Confirm the exact address and your route before arranging a viewing.</p></details>
             <fieldset className="home-type-fieldset" aria-describedby={errors.bedrooms ? "criteria-bedrooms-error" : undefined}>
               <legend>Home type</legend>
               <div className="home-type-options">
@@ -579,6 +581,7 @@ function EvidencePanel({
         <dl className="evidence-facts"><div><dt>Discovered</dt><dd>{pursuit.discovered}</dd></div><div><dt>Contact</dt><dd>{pursuit.contact ?? "Not found"}</dd></div></dl>
         <dl className="evidence-facts"><div><dt>Monthly rent</dt><dd>{formatMoney(pursuit.rent, pursuit.currency)}</dd></div><div><dt>Mandatory monthly charges</dt><dd>{pursuit.monthlyCharges === undefined ? "Unknown" : formatMoney(pursuit.monthlyCharges, pursuit.currency)}</dd></div><div><dt>Deposit (separate)</dt><dd>{pursuit.deposit === undefined ? "Unknown" : formatMoney(pursuit.deposit, pursuit.currency)}</dd></div></dl>
         <p className="saved-lead-date">Discovery time is not the ad&apos;s publication date. Current availability and distance remain unverified.</p>
+        {!pursuit.isDemo && !pursuit.isSample && !pursuit.contact && pursuit.contactPhone && phoneNumber(pursuit.contactPhone) && <p>No email was published. <a href={`tel:${phoneNumber(pursuit.contactPhone)}`}>Call {pursuit.contactPhone}</a> · Number listed in the source; identity and availability are unverified. Calling does not update email delivery or viewing status.</p>}
         {pursuit.missing.length > 0 && <div className="missing-callout"><CircleAlert size={15} aria-hidden="true" />Missing: {pursuit.missing.join(", ")}</div>}
         {Boolean(pursuit.amenityEvidence?.length) && <div className="amenity-evidence"><h3>Must-have evidence</h3>{pursuit.amenityEvidence?.map((item) => <div key={item.requirement}><strong>{item.requirement}</strong><blockquote>{item.quote}</blockquote></div>)}<small>Quoted from the source, not independently inspected. Confirm inclusions and availability with the lister.</small></div>}
       </section>
@@ -778,6 +781,7 @@ export function RentPilotCockpit() {
       discovered: new Date(item.discoveredAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
       seen: new Date(item.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
       contact: item.contactEmail,
+      contactPhone: item.contactPhone,
       missing: item.missingFields,
       amenityEvidence: item.amenityEvidence,
       scoreBreakdown: item.scoreBreakdown.map((part) => ({

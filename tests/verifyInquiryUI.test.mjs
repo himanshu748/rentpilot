@@ -11,7 +11,7 @@ function harness(changes={}) {
   if(name==="react")return {...require("react"),useState:initial=>{const i=cursor++;if(!(i in state))state[i]=typeof initial==="function"?initial():initial;return[state[i],value=>{state[i]=value;}];}};
   if(name==="convex/react")return {useMutation:fn=>async args=>calls.push({fn,args})};
   if(name.includes("_generated/api"))return {api:{suppliedLeads:{sendInquiry:"send",revoke:"revoke"}}};
-  if(name.endsWith("leadEvidence"))return {sourceAge:()=>"stale"};
+  if(name.endsWith("leadEvidence"))return {sourceAge:()=>"stale",phoneNumber:value=>value.replace(/ /g,"")};
   return require(name);
  }});
  const lead={_id:"fixture",title:"Fictional UI test",contactPermission:true,recipient:"fixture@example.com",isFixture:false,requirements:["Bed"],sourceDate:"2020-01-01",originalText:"Fictional incomplete room",draft:{subject:"Questions",body:"Is a bed included?"},replies:[],...changes};
@@ -31,4 +31,16 @@ test("Ask to verify reviews first; acknowledgement and explicit confirmation pre
 });
 for(const changes of [{isFixture:true},{recipient:""},{contactPermission:false},{revokedAt:1}])test(`ineligible lead disables Ask to verify ${JSON.stringify(changes)}`,()=>{
  assert.equal(button(harness(changes).render(),"Ask to verify").props.disabled,true);
+});
+
+test("a permitted phone-only lead offers a manual call and questions, not email",()=>{
+ const tree=harness({recipient:"",phone:"+91 98765 43210"}).render();
+ const link=nodes(tree).find(n=>n.type==="a");
+ assert.equal(link.props.href,"tel:+919876543210");
+ assert.match(text(tree),/Questions to ask by phone/);
+ assert.equal(button(tree,"Ask to verify").props.disabled,true);
+});
+test("revoked phone contact is displayed without an active call link",()=>{
+ const tree=harness({recipient:"",phone:"+919876543210",revokedAt:1}).render();
+ assert.equal(nodes(tree).some(n=>n.type==="a"),false);
 });

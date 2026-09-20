@@ -99,3 +99,15 @@ test("a shared-inbox message on another project thread never enters this noteboo
  await h.email.onReplyReceived.handler(h.ctx, { message: { inbox_id: "test-inbox@example.com", thread_id: "scout-thread", message_id: "unrelated", from: "lister@example.com", text: "Other project content" }, eventId: "unrelated-event", thread: {}, attempt: 6 });
  assert.equal((await h.handlers.list.handler(h.ctx, {}))[0].replies.length, 0);
 });
+test("phone-only leads preserve the supplied number but cannot send email", async () => {
+ const h=setup(), id=await h.create({recipient:"",phone:"+91 98765 43210"});
+ assert.equal(h.rows.get(id).phone,"+919876543210");
+ await assert.rejects(()=>h.send(id),/recipient/);
+ assert.equal(h.sent.length,0);
+});
+test("phone validation rejects injected URIs and extraction requires source evidence", () => {
+ assert.equal(evidence.phoneNumber("tel:+919876543210?body=hi"),null);
+ assert.equal(evidence.groundedPhone("+91 98765 43210","Contact: +91 98765 43210"),"+91 98765 43210");
+ assert.equal(evidence.groundedPhone("+91 98765 43210","Phone not published"),null);
+ assert.match(evidence.verificationDraft("Room",["Bhitauli"],"").body,/street or sector.*nearest landmark/);
+});

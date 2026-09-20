@@ -41,7 +41,7 @@ export default defineSchema({
   suppliedLeads: defineTable({
     owner: v.string(), title: v.string(), originalText: v.string(), provenance: v.string(),
     sourceDate: v.string(), savedAt: v.number(), requirements: v.array(v.string()),
-    permissionBasis: v.string(), contactPermission: v.boolean(), recipient: v.string(),
+    permissionBasis: v.string(), contactPermission: v.boolean(), recipient: v.string(), phone: v.optional(v.string()),
     revokedAt: v.optional(v.number()), isFixture: v.boolean(),
   }).index("by_owner", ["owner"]),
   leadInquiries: defineTable({

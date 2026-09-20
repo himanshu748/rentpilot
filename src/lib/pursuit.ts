@@ -31,6 +31,7 @@ export type Pursuit = {
   discovered: string;
   seen: string;
   contact: string | null;
+  contactPhone?: string | null;
   missing: string[];
   amenityEvidence?: { requirement: string; status: string; quote: string }[];
   scoreBreakdown: { label: string; score: number; max: number; note: string }[];

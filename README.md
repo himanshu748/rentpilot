@@ -2,7 +2,7 @@
 
 ## Current audit — 20 September 2026
 
-Production inventory was rechecked: both approved extraction sources are fictional/test-only. The current development changes add a private, permission-backed user-supplied listing notebook and a separate **Ask to verify** inquiry path. Supplied listings and lister replies remain unverified. This update is not yet deployed and no new real-lister round trip or independent renter trial is claimed.
+Production inventory was rechecked: both approved extraction sources are fictional/test-only. The deployed workflow adds a private, permission-backed user-supplied listing notebook and a separate **Ask to verify** inquiry path. Supplied listings and lister replies remain unverified. This update was deployed on 20 September 2026. Specific-area guidance and a source-backed or user-supplied phone fallback are available. No new real-lister round trip or independent renter trial is claimed.
 
 See [current workflow and permission boundaries](docs/current-workflow.md) and [verification evidence](docs/verification-2026-09-20.md). Older test counts and production checks below are historical, not evidence for this revision.
 

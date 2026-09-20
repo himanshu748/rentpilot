@@ -6,7 +6,7 @@ The original checkout had cloud-only files whose reads stalled. Work was perform
 
 ## Automated checks
 
-- `npm test`: **110 passed, 0 failed**, no skipped tests. Node tests execute application handlers with controlled database/provider doubles; this is not a live Convex or mail-provider round trip.
+- `npm test`: **114 passed, 0 failed**, no skipped tests. Node tests execute application handlers with controlled database/provider doubles; this is not a live Convex or mail-provider round trip.
 - App TypeScript check: passed.
 - Convex TypeScript check: passed.
 - ESLint: 0 errors; 4 unused-disable warnings in existing generated files.
@@ -26,13 +26,13 @@ Specific coverage includes:
 
 The actual new evidence-card component was rendered locally using clearly labelled fictional data. Checked desktop rendering and a 375 × 812 viewport. At 375px the document width and scroll width were both 375px (no horizontal overflow). Expanded source evidence showed original text, old source date and saved missing requirements. Fictional mode disabled email. A separate local review-state fixture showed recipient, subject and the complete message; acknowledgement enabled the confirmation button. The inquiry was cancelled without sending. Viewport override was reset; the temporary preview route was removed.
 
-This was a component render/interaction check, not an authenticated hosted import or live send. Hosted end-to-end verification remains outstanding.
+This was a component render/interaction check, not an authenticated hosted import or live send. Hosted authenticated inquiry end-to-end verification remains outstanding.
 
 ## Production and external evidence
 
 Fresh read-only production source-registry inspection returned the sample site and synthetic demo feed only. Current Roomies terms still restrict scraping. No source permission was widened, no third-party listing was scraped, and no shared inbox/webhook configuration was modified.
 
-No permitted real listing or consenting lister was supplied during this audit. A request for one is pending. No new real-lister reply, vacancy, appointment, testimonial, or independent renter trial is claimed. The public submission and hosted app have not been updated with these local changes.
+No permitted real listing or consenting lister was supplied during this audit. A request for one is pending. No new real-lister reply, vacancy, appointment, testimonial, or independent renter trial is claimed. The hosted app was updated in the deployment below. The public submission was not edited.
 
 ## Known limits and proposed rollout
 
@@ -42,3 +42,9 @@ No permitted real listing or consenting lister was supplied during this audit. A
 - Revocation blocks a new enqueue, but cannot recall an already-queued provider message. Delivery polling and early-reply retries are bounded; unusually delayed/unassociated messages require investigation. One inquiry is allowed per supplied lead; failed inquiries do not automatically resend.
 - Deploy additive Convex tables/functions first, then the static export. Verify an authenticated user-supplied import and mobile review on the hosted app. Complete one explicitly approved real-lister inquiry/reply/reload trial before claiming the real workflow is proven.
 - Recruit an independent renter with consent and record observations honestly. A trial plan is in `current-workflow.md`; no outreach was sent to an unspecified recipient.
+
+## Authorized deployment follow-up
+
+The user authorized deployment and requested area guidance plus a phone fallback. Both backend and frontend deployed successfully to https://ceaseless-pigeon-981.convex.site. Static deployment ID: `fe28e86f-f8ed-49af-a72c-61e2d06ca067`; 57 files uploaded; schema validation and generated-binding type checks passed. New tables/indexes are additive.
+
+The hosted `/app` preferences form was opened and its new area guidance expanded. Its rendered layout was checked at 375 × 812; the modal remained readable and scrollable. Preferences were closed without saving. Phone parsing, source-number matching, phone-only imports, manual call links and revoked-contact behavior are covered by the 114-test suite. No real call or lister inquiry was made.

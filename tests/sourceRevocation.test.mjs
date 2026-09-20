@@ -10,7 +10,7 @@ test("source revocation during extraction blocks persistence before any listing 
   if(id === "convex/values") return { v: new Proxy({}, {get:()=>()=>({})}) };
   if(id === "./_generated/api") return {components:{},internal:{}};
   if(id === "./_generated/server") return new Proxy({}, {get:()=>x=>x});
-  if(["./sampleSource","./session","./location","./schema","./eligibility"].includes(id)) return {};
+  if(["./leadEvidence","./sampleSource","./session","./location","./schema","./eligibility"].includes(id)) return {};
   throw Error(id);
  } });
  let writes = 0;

@@ -7,7 +7,7 @@ import type { api } from "../../convex/_generated/api";
 
 type SavedLead = FunctionReturnType<typeof api.webSearch.savedLeads>[number];
 type Update = (lead: SavedLead, stage: SavedLead["stage"], notes: string, revision: number) => Promise<void>;
-const stages = { to_check: "To check", contacted: "Contacted by me", viewing: "Viewing arranged", not_suitable: "Not suitable" } as const;
+const stages = { to_check: "To check", contacted: "Contacted by me", viewing: "Viewing recorded by me", not_suitable: "Not suitable" } as const;
 
 function SavedLeadRow({ lead, onUpdate, onRemove }: { lead: SavedLead; onUpdate: Update; onRemove: (lead: SavedLead) => Promise<void> }) {
   const id = useId();

@@ -15,6 +15,7 @@ function load(name, extra = {}) {
       if (id in extra) return extra[id];
       if (id === "convex/values") return { v: validators };
       if (id === "./_generated/server") return server;
+      if (id === "./sampleSource") return { sampleSourceHost: () => "sample.example.com" };
       if (id === "./location") return location;
       if (id === "./eligibility") return eligibility;
       if (id === "./session") return { ownerKey: async (_ctx, owner) => owner, isAnonymousSessionId: () => true };
@@ -56,7 +57,7 @@ function context({ criteria = null, listings = [] } = {}) {
       const q = { withIndex: () => q, order: () => q, first: async () => criteria, take: async () => table === "listings" ? listings : [], unique: async () => null };
       return q;
     },
-    get: async () => null,
+    get: async () => ({ permissionStatus: "approved", name: "Fixture source", domain: "example.com" }),
     insert: async (table, fields) => { writes.push({ table, fields }); return "new-id"; },
   };
   return { db, writes };
@@ -75,7 +76,7 @@ test("global brief saves country, currency and decimal budget", async () => {
   await assert.rejects(() => workspace.saveCriteria.handler(ctx, { currency: "XYZ", country: "UK", city: "London" }), /currency code/);
 });
 test("switching locations hides old pursuits rather than relabelling them", async () => {
-  const ctx = context({ criteria: { ...london, budgetMin: 0, budgetMax: 1800, localities: ["Camden"], bedrooms: ["Studio"], mustHaves: [] }, listings: [{ _id: "london", ...london, rent: 1500, locality: "Camden", bedrooms: "Studio" }, { _id: "canada", ...london, country: "Canada" }, { _id: "india", city: "Bengaluru" }] });
+  const ctx = context({ criteria: { ...london, budgetMin: 0, budgetMax: 1800, localities: ["Camden"], bedrooms: ["Studio"], mustHaves: [] }, listings: [{ _id: "london", ...london, rent: 1500, monthlyCharges: 0, locality: "Camden", bedrooms: "Studio" }, { _id: "canada", ...london, country: "Canada" }, { _id: "india", city: "Bengaluru" }] });
   const result = await pursuits.list.handler(ctx, { sessionId: "test" });
   assert.equal(result.length, 1);
   assert.equal(result[0]._id, "london");

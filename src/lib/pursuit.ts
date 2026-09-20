@@ -19,6 +19,8 @@ export type Pursuit = {
   title: string;
   locality: string;
   rent: number;
+  monthlyCharges?: number;
+  deposit?: number;
   currency: string;
   kind: string;
   score: number;

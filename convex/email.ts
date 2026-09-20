@@ -12,6 +12,8 @@ import { reserveIntegrationUse } from "./rateLimits";
 import { assertListingInSession, requireUserKey } from "./session";
 import { sendStatus } from "./schema";
 import { eligibilityProblems } from "./eligibility";
+import { mailbox } from "./leadEvidence";
+import { sampleSourceHost } from "./sampleSource";
 
 const agentmail = new AgentMail(components.agentmail);
 
@@ -41,6 +43,8 @@ export const sendApprovedDraft = mutation({
     if (thread.sendStatus !== "ready") {
       throw new Error("Save and approve the draft before sending.");
     }
+    const source = await ctx.db.get(listing.sourceId);
+    if (source?.permissionStatus !== "approved") throw new Error("Source permission is no longer active. No email was sent.");
     const criteria = await ctx.db.query("criteria").withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", owner)).order("desc").first();
     if (!criteria || eligibilityProblems(listing, criteria).length) throw new Error("This listing no longer meets your current search requirements. No email was sent.");
     if (!thread.draftedByModel) {
@@ -50,7 +54,7 @@ export const sendApprovedDraft = mutation({
       throw new Error("The OpenAI draft is incomplete. Generate it again before sending.");
     }
 
-    if (listing.isDemo) {
+    if (listing.isDemo || listing.isSample || source.isDemo || source.domain === sampleSourceHost()) {
       throw new Error("Synthetic demo recipients are never emailed.");
     }
     if (!listing.contactEmail) {
@@ -74,11 +78,10 @@ export const sendApprovedDraft = mutation({
       sendRequestId: args.requestId,
       agentmailOutboundId: outboundId,
     });
-    await ctx.db.patch(listing._id, { status: "contacted" });
     await ctx.db.insert("activity", {
       sessionId: listing.sessionId,
       listingId: listing._id,
-      type: "sent",
+      type: "system",
       message: `Approved inquiry queued for ${listing.contactEmail}`,
       createdAt: Date.now(),
       isDemo: false,
@@ -115,6 +118,10 @@ export const applyDeliveryState = internalMutation({
       sentAt: next === "sent" ? (thread.sentAt ?? Date.now()) : thread.sentAt,
       agentMailThreadRef: args.agentMailThreadRef ?? thread.agentMailThreadRef,
     });
+    if (next === "sent") {
+      const listing = await ctx.db.get(thread.listingId);
+      if (listing && ["new", "reviewing", "drafted"].includes(listing.status)) await ctx.db.patch(listing._id, { status: "contacted" });
+    }
     return null;
   },
 });
@@ -183,6 +190,12 @@ export const onReplyReceived = internalMutation({
       .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
       .unique();
     if (handled) return null;
+    const incomingInbox = readString(args.message, "inbox_id");
+    if (!incomingInbox || incomingInbox !== process.env.AGENTMAIL_INBOX_ID) return null;
+    const messageId = readString(args.message, "message_id");
+    if (!messageId) return null;
+    const duplicateMessage = await ctx.db.query("agentmailEvents").withIndex("by_event_id", q => q.eq("eventId", `message:${incomingInbox}:${messageId}`)).unique();
+    if (duplicateMessage) return null;
     const agentMailThreadId =
       readString(args.message, "thread_id") ?? readString(args.thread, "thread_id");
     const from = readString(args.message, "from") ?? "the landlord";
@@ -199,6 +212,16 @@ export const onReplyReceived = internalMutation({
           .first()
       : null;
 
+    const inquiry = agentMailThreadId ? await ctx.db.query("leadInquiries").withIndex("by_thread", q => q.eq("threadRef", agentMailThreadId)).first() : null;
+    if (inquiry) {
+      if (inquiry.inbox !== incomingInbox || mailbox(from) !== inquiry.recipient) return null;
+      const lead = await ctx.db.get(inquiry.leadId);
+      if (!lead || lead.owner !== inquiry.owner || lead.revokedAt) return null;
+      await ctx.db.insert("leadReplies", { owner: inquiry.owner, inquiryId: inquiry._id, messageId, from, text: text.slice(0, 12000), receivedAt: Date.now() });
+      await ctx.db.insert("agentmailEvents", { eventId: `message:${incomingInbox}:${messageId}`, createdAt: Date.now() });
+      await ctx.db.insert("agentmailEvents", { eventId: args.eventId, createdAt: Date.now() });
+      return null;
+    }
     if (!thread) {
       // The outbound receipt can arrive after a fast reply. Allow the bounded
       // captureThreadRef poll to finish before treating this as unrelated mail.
@@ -217,7 +240,8 @@ export const onReplyReceived = internalMutation({
     await ctx.db.insert("agentmailEvents", { eventId: args.eventId, createdAt: Date.now() });
     const listing = await ctx.db.get(thread.listingId);
     // Never leak a reply into shared activity if its owned listing was removed.
-    if (!listing?.sessionId) return null;
+    if (!listing?.sessionId || !listing.contactEmail || mailbox(from) !== mailbox(listing.contactEmail)) return null;
+    await ctx.db.insert("agentmailEvents", { eventId: `message:${incomingInbox}:${messageId}`, createdAt: Date.now() });
     await ctx.db.patch(thread._id, {
       lastReplySummary: summary || null,
       lastReplyIntent: "received",
@@ -296,6 +320,7 @@ export const syncDeliveryState = mutation({
         : delivery.status === "sent" || delivery.status === "delivered"
           ? "sent"
           : "failed";
+    if (next === "sent" && ["new", "reviewing", "drafted"].includes(listing.status)) await ctx.db.patch(listing._id, { status: "contacted" });
     if (next === thread.sendStatus) return thread.sendStatus;
 
     await ctx.db.patch(thread._id, {

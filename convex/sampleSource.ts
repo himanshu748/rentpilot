@@ -38,7 +38,7 @@ export const sampleListings: SampleListing[] = [
     slug: "koramangala-5th-block-1bhk",
     title: "Compact 1 BHK near the main road",
     rent: 28000,
-    bedrooms: "1 BHK",
+    bedrooms: "Whole 1 BHK",
     deposit: 84000,
     available: "From the 1st of next month",
     furnishing: "Fully furnished",
@@ -150,6 +150,8 @@ export function renderListing(listing: SampleListing, place: SamplePlace) {
        <tr><th scope="row">Available</th><td>${listing.available}</td></tr>
        <tr><th scope="row">Contact email</th><td>${email ? escapeHtml(email) : "Not published"}</td></tr>
      </tbody></table>
+     <p>Mandatory monthly charges: 0</p>
+     <p>Deposit: ${listing.deposit}</p>
      <p>${listing.notes}</p>
      <footer>Sample record published by RentPilot. Not a live tenancy.</footer>`,
   );

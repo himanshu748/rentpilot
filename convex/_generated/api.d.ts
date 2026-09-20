@@ -16,6 +16,8 @@ import type * as drafting from "../drafting.js";
 import type * as eligibility from "../eligibility.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
+import type * as leadEvidence from "../leadEvidence.js";
+import type * as suppliedLeads from "../suppliedLeads.js";
 import type * as location from "../location.js";
 import type * as pursuits from "../pursuits.js";
 import type * as rateLimits from "../rateLimits.js";
@@ -41,6 +43,8 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   http: typeof http;
   location: typeof location;
+  leadEvidence: typeof leadEvidence;
+  suppliedLeads: typeof suppliedLeads;
   pursuits: typeof pursuits;
   rateLimits: typeof rateLimits;
   sampleSource: typeof sampleSource;

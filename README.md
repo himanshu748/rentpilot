@@ -1,5 +1,12 @@
 # RentPilot
 
+## Current audit — 20 September 2026
+
+Production inventory was rechecked: both approved extraction sources are fictional/test-only. The current development changes add a private, permission-backed user-supplied listing notebook and a separate **Ask to verify** inquiry path. Supplied listings and lister replies remain unverified. This update is not yet deployed and no new real-lister round trip or independent renter trial is claimed.
+
+See [current workflow and permission boundaries](docs/current-workflow.md) and [verification evidence](docs/verification-2026-09-20.md). Older test counts and production checks below are historical, not evidence for this revision.
+
+
 RentPilot turns scattered room listings into traceable pursuits. Each pursuit keeps its source evidence, explains its fit score and presents one safe next action from found to viewing.
 
 This is the Convex All Gas Hackathon build, [submitted on Vibe Apps](https://vibeapps.dev/s/rentpilot) on September 5, 2026.

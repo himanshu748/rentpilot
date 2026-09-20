@@ -13,7 +13,7 @@ const factors = [
   { label: "Budget", value: 30, max: 30, note: "Inside the selected range" },
   { label: "Locality", value: 28, max: 30, note: "Preferred neighbourhood" },
   { label: "Evidence", value: 24, max: 25, note: "Contact path found" },
-  { label: "Freshness", value: 12, max: 15, note: "Seen recently" },
+  { label: "Freshness", value: 0, max: 15, note: "Availability not verified" },
 ];
 
 const stages = [
@@ -40,7 +40,7 @@ const stages = [
   {
     name: "Replied",
     detail:
-      "Replies return to the RentPilot inbox. Automatic reply tracking in your matches is still being tested.",
+      "Replies return to the RentPilot inbox. Replies are attributed correspondence, not independent property or landlord verification.",
   },
   {
     name: "Viewing",
@@ -267,7 +267,7 @@ export default function Home() {
                   <strong>Budget</strong>
                   <span>Your rent range</span>
                   <p>
-                    Rooms above your maximum monthly rent are excluded from matches.
+                    Rent plus known mandatory recurring charges must fit your budget; unknown charges block a match.
                     Unverified web leads may still mention other prices.
                   </p>
                 </div>
@@ -352,7 +352,7 @@ export default function Home() {
               </div>
               <p className="lp-sub" style={{ marginTop: 18, display: "flex", gap: 7 }}>
                 <ShieldCheck size={16} aria-hidden="true" style={{ flex: "0 0 auto", marginTop: 2 }} />
-                Every inquiry needs your confirmation. Fictional sample listings are labelled separately from real rentals.
+                Every inquiry needs your confirmation. Approved extraction inventory is currently test-only; user-supplied listings remain unverified.
               </p>
             </div>
           </div>

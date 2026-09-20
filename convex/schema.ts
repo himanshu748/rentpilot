@@ -38,6 +38,24 @@ export const savedLeadStage = v.union(v.literal("to_check"), v.literal("contacte
 export default defineSchema({
   ...authTables,
 
+  suppliedLeads: defineTable({
+    owner: v.string(), title: v.string(), originalText: v.string(), provenance: v.string(),
+    sourceDate: v.string(), savedAt: v.number(), requirements: v.array(v.string()),
+    permissionBasis: v.string(), contactPermission: v.boolean(), recipient: v.string(),
+    revokedAt: v.optional(v.number()), isFixture: v.boolean(),
+  }).index("by_owner", ["owner"]),
+  leadInquiries: defineTable({
+    owner: v.string(), leadId: v.id("suppliedLeads"), recipient: v.string(), inbox: v.string(),
+    subject: v.string(), body: v.string(), requestId: v.string(), approvedAt: v.number(),
+    status: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
+    outboundId: v.string(), threadRef: v.optional(v.string()), messageRef: v.optional(v.string()),
+    providerStatus: v.optional(v.string()),
+  }).index("by_lead", ["leadId"]).index("by_thread", ["threadRef"]),
+  leadReplies: defineTable({
+    owner: v.string(), inquiryId: v.id("leadInquiries"), messageId: v.string(),
+    from: v.string(), text: v.string(), receivedAt: v.number(),
+  }).index("by_message", ["messageId"]).index("by_inquiry", ["inquiryId"]),
+
   savedLeads: defineTable({
     owner: v.string(),
     lead: searchLead,
@@ -109,6 +127,8 @@ export default defineSchema({
     discoveredAt: v.number(),
     title: v.string(),
     rent: v.number(),
+    monthlyCharges: v.optional(v.number()),
+    deposit: v.optional(v.number()),
     locality: v.string(),
     bedrooms: v.string(),
     amenityEvidence: v.optional(amenityEvidence),

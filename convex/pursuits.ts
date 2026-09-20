@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { assertListingInSession, ownerKey } from "./session";
 import { amenityEvidence, pursuitStatus, sendStatus } from "./schema";
 import { sameMarket } from "./location";
+import { sampleSourceHost } from "./sampleSource";
 import { eligibilityProblems } from "./eligibility";
 
 const scorePart = v.object({
@@ -28,6 +29,8 @@ const pursuit = v.object({
   discoveredAt: v.number(),
   title: v.string(),
   rent: v.number(),
+  monthlyCharges: v.optional(v.number()),
+  deposit: v.optional(v.number()),
   locality: v.string(),
   bedrooms: v.string(),
   amenityEvidence: v.optional(amenityEvidence),
@@ -72,9 +75,10 @@ export const list = query({
       .order("desc")
       .take(50);
 
-    return await Promise.all(
+    const results = await Promise.all(
       listings.filter((listing) => sameMarket(listing, criteria) && eligibilityProblems(listing, criteria).length === 0).map(async (listing) => {
         const source = await ctx.db.get(listing.sourceId);
+        if (source?.permissionStatus !== "approved") return null;
         const thread = await ctx.db
           .query("threads")
           .withIndex("by_listing", (q) => q.eq("listingId", listing._id))
@@ -82,7 +86,7 @@ export const list = query({
 
         return {
           ...listing,
-          isSample: listing.isSample ?? false,
+          isSample: Boolean(listing.isSample || source.isDemo || source.domain === sampleSourceHost()),
           sourceName: source?.name ?? "Unknown source",
           sourceDomain: source?.domain ?? "unknown",
           thread: thread
@@ -101,6 +105,7 @@ export const list = query({
         };
       }),
     );
+    return results.filter((row): row is NonNullable<typeof row> => row !== null);
   },
 });
 
@@ -154,6 +159,7 @@ export const transition = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const listing = await assertListingInSession(ctx, args.listingId, await ownerKey(ctx, args.sessionId));
+    if (args.status === "contacted" || args.status === "replied") throw new Error("Email progress is recorded from provider activity, not manual changes.");
     await ctx.db.patch(args.listingId, { status: args.status });
     await ctx.db.insert("activity", {
       sessionId: listing.sessionId,
@@ -161,7 +167,7 @@ export const transition = mutation({
       type: args.status === "viewing" ? "viewing" : "system",
       message:
         args.status === "viewing"
-          ? "Viewing marked as booked"
+          ? "Viewing recorded manually by renter"
           : `Pursuit moved to ${args.status}`,
       createdAt: Date.now(),
       isDemo: false,

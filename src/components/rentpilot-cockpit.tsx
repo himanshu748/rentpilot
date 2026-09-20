@@ -46,6 +46,7 @@ import {
   type SendStatus,
 } from "@/lib/pursuit";
 import { SignInDialog } from "@/components/sign-in-dialog";
+import { SuppliedLeadsPanel } from "@/components/supplied-leads-panel";
 import { SavedLeadsPanel } from "@/components/saved-leads-panel";
 import { SearchDiscoveryPanel } from "@/components/search-discovery-panel";
 import { cn } from "@/lib/utils";
@@ -444,7 +445,7 @@ function EvidencePanel({
   );
 
   const sendState: SendStatus = pursuit.sendStatus ?? "draft";
-  const editable = !pursuit.isDemo && sendState !== "sending" && sendState !== "sent";
+  const editable = !pursuit.isDemo && !pursuit.isSample && sendState !== "sending" && sendState !== "sent";
   const hasModelDraft = Boolean(draftedByModel);
   const hasDraftContent = subject.trim().length >= 3 && body.trim().length >= 20;
   const showDraft = hasDraftContent && (hasModelDraft || Boolean(pursuit.isDemo));
@@ -457,7 +458,7 @@ function EvidencePanel({
     hasDraftContent &&
     !editing &&
     sendState === "ready" &&
-    !pursuit.isDemo,
+    !pursuit.isDemo && !pursuit.isSample,
   );
 
   useEffect(() => {
@@ -531,7 +532,7 @@ function EvidencePanel({
     ? <Dialog.Title asChild><h2>{pursuit.title}</h2></Dialog.Title>
     : <h2>{pursuit.title}</h2>;
 
-  const actionNote = pursuit.isDemo
+  const actionNote = pursuit.isDemo || pursuit.isSample
     ? "Demo-safe: synthetic recipients are never emailed."
     : !hasModelDraft && !openaiConfigured
       ? "OpenAI is required. Add its deployment key to generate this inquiry."
@@ -576,6 +577,8 @@ function EvidencePanel({
         <div className="section-title-row"><h3>Source evidence</h3><ShieldCheck size={16} aria-hidden="true" /></div>
         <div className="source-line"><div className="source-monogram" aria-hidden="true">{pursuit.source.slice(0, 1).toUpperCase()}</div><div><strong>{pursuit.source}</strong><p>{pursuit.sourceNote}</p></div></div>
         <dl className="evidence-facts"><div><dt>Discovered</dt><dd>{pursuit.discovered}</dd></div><div><dt>Contact</dt><dd>{pursuit.contact ?? "Not found"}</dd></div></dl>
+        <dl className="evidence-facts"><div><dt>Monthly rent</dt><dd>{formatMoney(pursuit.rent, pursuit.currency)}</dd></div><div><dt>Mandatory monthly charges</dt><dd>{pursuit.monthlyCharges === undefined ? "Unknown" : formatMoney(pursuit.monthlyCharges, pursuit.currency)}</dd></div><div><dt>Deposit (separate)</dt><dd>{pursuit.deposit === undefined ? "Unknown" : formatMoney(pursuit.deposit, pursuit.currency)}</dd></div></dl>
+        <p className="saved-lead-date">Discovery time is not the ad&apos;s publication date. Current availability and distance remain unverified.</p>
         {pursuit.missing.length > 0 && <div className="missing-callout"><CircleAlert size={15} aria-hidden="true" />Missing: {pursuit.missing.join(", ")}</div>}
         {Boolean(pursuit.amenityEvidence?.length) && <div className="amenity-evidence"><h3>Must-have evidence</h3>{pursuit.amenityEvidence?.map((item) => <div key={item.requirement}><strong>{item.requirement}</strong><blockquote>{item.quote}</blockquote></div>)}<small>Quoted from the source, not independently inspected. Confirm inclusions and availability with the lister.</small></div>}
       </section>
@@ -759,6 +762,8 @@ export function RentPilotCockpit() {
       title: item.title,
       locality: item.locality,
       rent: item.rent,
+      monthlyCharges: item.monthlyCharges,
+      deposit: item.deposit,
       currency: item.currency ?? "INR",
       kind: item.bedrooms,
       score: item.score ?? 0,
@@ -897,7 +902,7 @@ export function RentPilotCockpit() {
 
   async function sendPursuitDraft(pursuit: Pursuit, requestId: string) {
     if (!pursuit.threadId) throw new Error("This pursuit has no inquiry thread yet.");
-    if (pursuit.isDemo) throw new Error("Synthetic demo recipients cannot be emailed.");
+    if (pursuit.isDemo || pursuit.isSample) throw new Error("Synthetic demo recipients cannot be emailed.");
     await sendApprovedDraft({ threadId: pursuit.threadId, requestId });
   }
 
@@ -1106,6 +1111,7 @@ export function RentPilotCockpit() {
             </button>
           </div>
           {hasSearch && <SearchDiscoveryPanel brief={activeCriteria} run={latestSearch} searching={searchingWeb} error={webSearchError} onSearch={findLiveLeads} onEdit={() => setCriteriaOpen(true)} savedUrls={(savedLeads ?? []).map(item => item.lead.url)} onSaveLead={async url => { if (!viewer) { setSignInOpen(true); throw new Error("Sign in to keep this lead with your account."); } await saveLead({ url }); }} />}
+          {viewer && <SuppliedLeadsPanel />}
           {viewer && savedLeads !== undefined && <SavedLeadsPanel leads={savedLeads} onUpdate={async (lead, stage, notes, revision) => { await updateSavedLead({ id: lead._id, stage, notes, expectedUpdatedAt: revision }); }} onRemove={async lead => { await removeSavedLead({ id: lead._id }); }} />}
           <div className="toolbar">
             <label className="search-box"><Search size={16} aria-hidden="true" /><span className="sr-only">Filter matches</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter matches by area or title" /></label>

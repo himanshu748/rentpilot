@@ -12,7 +12,7 @@ import { listingUrl, sampleListings, sampleSourceHost } from "./sampleSource";
 import { requireUserKey } from "./session";
 import { sameMarket, validCurrency } from "./location";
 import { amenityEvidence } from "./schema";
-import { eligibilityProblems, groundedAmenities, extractedHomeTypes, groundedHomeType } from "./eligibility";
+import { eligibilityProblems, groundedAmenities, groundedCosts, extractedHomeTypes, groundedHomeType } from "./eligibility";
 
 const firecrawl = new FirecrawlClient(components.firecrawl);
 
@@ -34,6 +34,8 @@ const extractedListing = v.object({
   country: v.string(),
   currency: v.string(),
   rent: v.number(),
+  monthlyCharges: v.optional(v.number()),
+  deposit: v.optional(v.number()),
   locality: v.string(),
   bedrooms: v.string(),
   amenityEvidence: v.optional(amenityEvidence),
@@ -115,6 +117,8 @@ export const persistExtractedListing = internalMutation({
     score: v.number(),
   }),
   handler: async (ctx, args) => {
+    const source = await ctx.db.get(args.sourceId);
+    if (source?.permissionStatus !== "approved") throw new Error("Source permission was revoked during extraction.");
     const criteria = await ctx.db
       .query("criteria")
       .withIndex("by_session_and_updated_at", (q) => q.eq("sessionId", args.sessionId))
@@ -134,7 +138,7 @@ export const persistExtractedListing = internalMutation({
       args.extracted.contactEmail || args.extracted.contactPhone,
     );
     const evidenceScore = hasContact ? 25 : 14;
-    const freshnessScore = 15;
+    const freshnessScore = 0; // Fetch time is not evidence of publication or vacancy freshness.
     const score = budgetScore + localityScore + evidenceScore + freshnessScore;
     const missingFields = [
       ...(hasContact ? [] : ["contact path"]),
@@ -161,6 +165,8 @@ export const persistExtractedListing = internalMutation({
       discoveredAt: existing?.discoveredAt ?? now,
       title: args.extracted.title,
       rent: args.extracted.rent,
+      monthlyCharges: args.extracted.monthlyCharges,
+      deposit: args.extracted.deposit,
       locality: args.extracted.locality,
       bedrooms: args.extracted.bedrooms,
       amenityEvidence: args.extracted.amenityEvidence ?? [],
@@ -188,12 +194,12 @@ export const persistExtractedListing = internalMutation({
         {
           label: "Freshness",
           value: freshnessScore,
-          note: "Fetched in the current sweep",
+          note: "Fetch time only; publication date and availability are unverified",
         },
       ],
       status: existing?.status ?? ("new" as const),
       isDemo: false,
-      isSample: args.isSample ?? false,
+      isSample: Boolean(args.isSample || source.isDemo || source.domain === sampleSourceHost()),
     };
 
     if (existing) {
@@ -319,6 +325,7 @@ export const scrapeApprovedListingInternal = internalAction({
       country,
       currency,
       rent,
+      ...groundedCosts(page.markdown ?? ""),
       locality,
       bedrooms,
       amenityEvidence: groundedAmenities(record.amenityEvidence, page.markdown ?? "", brief.mustHaves),

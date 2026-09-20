@@ -82,7 +82,7 @@ test("back to editing cancels approval and saves updated text before review", as
   assert.match(h.calls.saved.at(-1).body, /no extra fee/);
   assert.equal(h.calls.sent.length, 0);
 });
-for (const [label, overrides] of [["missing email", { contact: null }], ["demo", { isDemo: true }], ["no AI draft", { draftedByModel: null }], ["already sent", { sendStatus: "sent" }], ["pending send", { sendStatus: "sending" }]]) {
+for (const [label, overrides] of [["missing email", { contact: null }], ["demo", { isDemo: true }], ["sample", { isSample: true }], ["no AI draft", { draftedByModel: null }], ["already sent", { sendStatus: "sent" }], ["pending send", { sendStatus: "sending" }]]) {
   test(`${label} disables the email action`, () => {
     const h = harness(overrides);
     const action = nodes(h.render()).find(n => n.type === "button" && n.props.className.includes("send-action"));

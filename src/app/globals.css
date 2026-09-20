@@ -489,3 +489,16 @@ main:focus { outline: none; }
 .saved-notes-form textarea { resize: vertical; }
 .discovery-warning { padding: 14px; margin-block: 12px; border-left: 3px solid var(--amber); background: var(--surface); font-size: 13px; line-height: 1.65; }
 .discovery-warning button { margin-top: 10px; }
+
+/* Keep supplied evidence readable without treating it as verified inventory. */
+.supplied-original { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin-block: 12px; }
+.supplied-lead details, .verification-review { margin-block: 12px; }
+.verification-review { padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.supplied-lead input[type="checkbox"], .saved-notes-form input[type="checkbox"] { width: 16px; height: 16px; flex: none; }
+.saved-notes-form input:not([type="checkbox"]) { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; }
+.supplied-lead { line-height: 1.6; }
+.supplied-lead p { margin-block: 8px; }
+.supplied-lead summary { cursor: pointer; font-weight: 600; }
+.supplied-lead details ul { list-style: disc; padding-inline-start: 20px; }
+.supplied-lead button:disabled { opacity: .5; cursor: not-allowed; }
+.supplied-lead h4 { font-weight: 600; }

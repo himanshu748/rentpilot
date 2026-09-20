@@ -41,6 +41,8 @@ export const getDraftContext = internalQuery({
     if (!isListingInSession(listing, args.owner)) {
       throw new Error("This pursuit belongs to another search session.");
     }
+    const source = await ctx.db.get(listing.sourceId);
+    if (source?.permissionStatus !== "approved") throw new Error("Source permission is no longer active.");
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_listing", (q) => q.eq("listingId", listing._id))
